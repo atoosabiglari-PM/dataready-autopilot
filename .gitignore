@@ -1,0 +1,31 @@
+# Python virtual environments
+.venv/
+venv/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+
+# Testing and code-quality caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example
+credentials.json
+service-account*.json
+
+# Runtime-generated files
+*.log
+uploads/
+outputs/
+quarantine/
+
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+.idea/

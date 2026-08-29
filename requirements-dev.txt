@@ -1,0 +1,10 @@
+# Include every production dependency
+-r requirements.txt
+
+# Automated testing
+pytest>=9.0,<10.0
+pytest-cov>=6.0,<8.0
+httpx2>=2.12,<3.0
+
+# Code quality
+ruff>=0.12,<1.0

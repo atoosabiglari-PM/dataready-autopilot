@@ -1,0 +1,26 @@
+[project]
+name = "dataready-autopilot"
+version = "0.1.0"
+description = "An autonomous, evidence-backed trust gate for AI data pipelines."
+requires-python = ">=3.12,<3.13"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["uploads", "outputs", "quarantine"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

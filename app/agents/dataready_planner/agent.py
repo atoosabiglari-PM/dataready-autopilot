@@ -4,7 +4,7 @@ from google.adk.agents import LlmAgent
 
 from app.core.policy import RepairPlan
 
-MODEL_ID = "gemini-2.5-flash"
+MODEL_ID = "gemini-3.6-flash"
 
 PLANNER_INSTRUCTION = """
 You are the DataReady Autopilot repair-planning agent.

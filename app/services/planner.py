@@ -20,7 +20,7 @@ from app.tools.audit import AuditReport
 
 APP_NAME = "dataready_autopilot"
 USER_ID = "local_dataready_user"
-REQUEST_TIMEOUT_SECONDS = 60
+REQUEST_TIMEOUT_SECONDS = 120
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
@@ -112,7 +112,9 @@ def prepare_planner_input(report: AuditReport) -> PreparedPlannerInput:
     )
 
 
-def build_planner_prompt(evidence: SanitizedAuditEvidence) -> str:
+def build_planner_prompt(
+    evidence: SanitizedAuditEvidence,
+) -> str:
     """Serialize only the explicitly approved sanitized evidence."""
     payload = json.dumps(
         evidence.model_dump(mode="json"),
@@ -129,9 +131,16 @@ def build_planner_prompt(evidence: SanitizedAuditEvidence) -> str:
 
 def _load_gemini_configuration() -> None:
     """Load local secrets without logging or returning their values."""
-    load_dotenv(dotenv_path=ENV_FILE, override=False)
+    load_dotenv(
+        dotenv_path=ENV_FILE,
+        override=False,
+    )
 
-    developer_mode = os.getenv("GOOGLE_GENAI_USE_VERTEXAI", "").upper()
+    developer_mode = os.getenv(
+        "GOOGLE_GENAI_USE_VERTEXAI",
+        "",
+    ).upper()
+
     if developer_mode != "FALSE":
         raise PlannerConfigurationError(
             "GOOGLE_GENAI_USE_VERTEXAI must be FALSE for Developer API mode."
@@ -141,18 +150,35 @@ def _load_gemini_configuration() -> None:
         raise PlannerConfigurationError("GOOGLE_API_KEY is not configured.")
 
 
-def _extract_final_text(event: object) -> str | None:
+def _extract_final_text(
+    event: object,
+) -> str | None:
     """Extract text only from an ADK final-response event."""
-    is_final_response = getattr(event, "is_final_response", None)
+    is_final_response = getattr(
+        event,
+        "is_final_response",
+        None,
+    )
+
     if not callable(is_final_response) or not is_final_response():
         return None
 
-    content = getattr(event, "content", None)
-    parts = getattr(content, "parts", None)
+    content = getattr(
+        event,
+        "content",
+        None,
+    )
+    parts = getattr(
+        content,
+        "parts",
+        None,
+    )
+
     if not parts:
         return None
 
     text_parts = [part.text for part in parts if getattr(part, "text", None)]
+
     return "".join(text_parts) or None
 
 
@@ -165,23 +191,38 @@ def _restore_column_names(
 
     for action in plan.actions:
         restored_columns: list[str] = []
+
         for column_ref in action.columns:
             if column_ref not in alias_to_column:
                 raise PlannerResponseError(f"Planner returned unknown column alias: {column_ref}")
+
             restored_columns.append(alias_to_column[column_ref])
 
-        restored_actions.append(action.model_copy(update={"columns": restored_columns}))
+        restored_actions.append(
+            action.model_copy(
+                update={
+                    "columns": restored_columns,
+                }
+            )
+        )
 
-    return plan.model_copy(update={"actions": restored_actions})
+    return plan.model_copy(
+        update={
+            "actions": restored_actions,
+        }
+    )
 
 
-async def propose_repair_plan(report: AuditReport) -> RepairPlan:
+async def propose_repair_plan(
+    report: AuditReport,
+) -> RepairPlan:
     """Request and validate one structured Gemini repair proposal."""
     prepared = prepare_planner_input(report)
     _load_gemini_configuration()
 
     session_service = InMemorySessionService()
     session_id = f"plan-{uuid4().hex}"
+
     await session_service.create_session(
         app_name=APP_NAME,
         user_id=USER_ID,
@@ -193,12 +234,14 @@ async def propose_repair_plan(report: AuditReport) -> RepairPlan:
         app_name=APP_NAME,
         session_service=session_service,
     )
+
     message = types.Content(
         role="user",
         parts=[types.Part(text=build_planner_prompt(prepared.evidence))],
     )
 
     final_text: str | None = None
+
     try:
         async with asyncio.timeout(REQUEST_TIMEOUT_SECONDS):
             async for event in runner.run_async(
@@ -207,10 +250,13 @@ async def propose_repair_plan(report: AuditReport) -> RepairPlan:
                 new_message=message,
             ):
                 candidate = _extract_final_text(event)
+
                 if candidate is not None:
                     final_text = candidate
+
     except TimeoutError as error:
         raise PlannerResponseError("Gemini planning request timed out.") from error
+
     finally:
         await runner.close()
 
@@ -219,6 +265,7 @@ async def propose_repair_plan(report: AuditReport) -> RepairPlan:
 
     try:
         plan = RepairPlan.model_validate_json(final_text)
+
     except ValidationError as error:
         raise PlannerResponseError(
             "Gemini response did not match the RepairPlan schema."
@@ -227,4 +274,7 @@ async def propose_repair_plan(report: AuditReport) -> RepairPlan:
     if plan.source_fingerprint_sha256 != prepared.evidence.source_fingerprint_sha256:
         raise PlannerResponseError("Gemini response fingerprint does not match the audited source.")
 
-    return _restore_column_names(plan, prepared.alias_to_column)
+    return _restore_column_names(
+        plan,
+        prepared.alias_to_column,
+    )

@@ -1,0 +1,6 @@
+sku,category,availability
+A100, Electronics ,in_stock
+B200,Home,low_stock
+B200,Home,low_stock
+C300,Toys,in_stock
+D400, Garden ,backorder

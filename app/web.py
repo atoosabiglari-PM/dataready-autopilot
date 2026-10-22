@@ -11,6 +11,7 @@ from fastapi import FastAPI, Header, HTTPException
 
 from app.core.policy import DatasetPolicy, RepairAction
 from app.services.autopilot import run_autopilot
+from app.showcase import router as showcase_router
 from app.services.candidate_selection import recommend_candidate_batch
 from app.services.nebius_candidates import MODEL as NEBIUS_MODEL
 from app.services.nebius_candidates import NebiusCandidateError, propose_nebius_candidates
@@ -22,6 +23,8 @@ app = FastAPI(
     description=("Governed data readiness before enterprise data enters AI workflows."),
     version="1.0.0",
 )
+
+app.include_router(showcase_router)
 
 
 @app.get("/")

@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+import os
+from hmac import compare_digest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 
 from app.core.policy import DatasetPolicy, RepairAction
 from app.services.autopilot import run_autopilot
+from app.services.candidate_selection import recommend_candidate_batch
+from app.services.nebius_candidates import MODEL as NEBIUS_MODEL
+from app.services.nebius_candidates import NebiusCandidateError, propose_nebius_candidates
+from app.tools.audit import audit_csv
+from app.tools.fingerprint import calculate_sha256
 
 app = FastAPI(
     title="DataReady Autopilot",
@@ -137,3 +144,142 @@ async def demo_repair() -> dict[str, object]:
             status_code=500,
             detail=(f"The governed DataReady workflow failed safely: {type(exc).__name__}: {exc}"),
         ) from exc
+
+
+DEMO_ACCESS_ENV = "DATAREADY_DEMO_ACCESS_TOKEN"
+DEMO_HEADER = "X-DataReady-Demo-Token"
+
+
+def _require_nebius_demo_access(provided_token: str | None) -> None:
+    """Deny all paid inference when the separate demo credential is absent."""
+    configured_token = os.getenv(DEMO_ACCESS_ENV, "")
+    if len(configured_token) < 32:
+        raise HTTPException(
+            status_code=503, detail="NVIDIA demo access is not configured."
+        )
+    if not provided_token or not compare_digest(provided_token, configured_token):
+        raise HTTPException(status_code=401, detail="Unauthorized demo request.")
+
+
+@app.post("/demo/nebius-candidates")
+def demo_nebius_candidates(
+    demo_token: str | None = Header(default=None, alias=DEMO_HEADER),
+) -> dict[str, object]:
+    """NVIDIA model proposes; DataReady evaluates synthetic demo data only.
+
+    A distinct access token is required BEFORE initiating the billable inference.
+    This route does not accept uploads, release data, or authorize production writes.
+    """
+    _require_nebius_demo_access(demo_token)
+
+    source_path = Path(__file__).resolve().parents[1] / "demo_data" / "01_safe_repair.csv"
+    if not source_path.is_file():
+        raise HTTPException(status_code=503, detail="Demo dataset is unavailable.")
+
+    audit_before = audit_csv(source_path)
+    if audit_before.status != "QUARANTINED" or not audit_before.fingerprint_sha256:
+        raise HTTPException(
+            status_code=422, detail="Demo dataset is not eligible for repair planning."
+        )
+
+    original_hash = calculate_sha256(source_path)
+    if original_hash != audit_before.fingerprint_sha256:
+        raise HTTPException(status_code=409, detail="Demo source integrity mismatch.")
+
+    try:
+        candidates = propose_nebius_candidates(audit_before)
+    except NebiusCandidateError:
+        raise HTTPException(
+            status_code=502, detail="Nebius candidate generation failed safely."
+        ) from None
+
+    policy = DatasetPolicy(
+        policy_id="nebius-synthetic-demo-permitted-actions",
+        allowed_actions={
+            RepairAction.REMOVE_EXACT_DUPLICATES,
+            RepairAction.TRIM_OUTER_WHITESPACE,
+            RepairAction.STANDARDIZE_MISSING_MARKERS,
+        },
+    )
+
+    try:
+        recommendation = recommend_candidate_batch(
+            source_path, candidates, dataset_policy=policy
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=409, detail="Independent candidate evaluation failed safely."
+        ) from None
+
+    if calculate_sha256(source_path) != original_hash:
+        raise HTTPException(
+            status_code=409, detail="Demo source integrity changed during evaluation."
+        )
+
+    candidate_results: list[dict[str, object]] = []
+    for row, evaluation in zip(
+        recommendation.rows, recommendation.evaluations, strict=True
+    ):
+        trial = evaluation.trial
+        after = trial.audit_after
+        candidate_results.append(
+            {
+                "candidate_id": row.candidate_id,
+                "actions": [
+                    {
+                        "action": action.action.value,
+                        "columns": action.columns,
+                    }
+                    for action in trial.assessment.candidate.repair_plan.actions
+                ],
+                "policy_status": trial.assessment.policy_decision.status,
+                "evaluation_status": row.evaluation_status,
+                "disposition": row.disposition,
+                "reason": row.reason,
+                "audit_after": (
+                    {
+                        "status": after.status,
+                        "quality_score": after.quality_score,
+                        "row_count": after.row_count,
+                        "issues": [
+                            {"code": issue.code, "severity": issue.severity,
+                             "count": issue.count}
+                            for issue in after.issues
+                        ],
+                    }
+                    if after is not None else None
+                ),
+                "regressions": (
+                    [finding.code for finding in evaluation.regression.findings]
+                    if evaluation.regression is not None else []
+                ),
+            }
+        )
+
+    return {
+        "service": "DataReady Autopilot",
+        "provider": "Nebius Token Factory",
+        "model": NEBIUS_MODEL,
+        "source": "bundled_synthetic_demo",
+        "source_fingerprint_sha256": original_hash,
+        "audit_before": {
+            "status": audit_before.status,
+            "quality_score": audit_before.quality_score,
+            "row_count": audit_before.row_count,
+            "issues": [
+                {"code": issue.code, "severity": issue.severity, "count": issue.count}
+                for issue in audit_before.issues
+            ],
+        },
+        "candidate_count": len(candidates.candidates),
+        "candidate_results": candidate_results,
+        "recommendation": {
+            "status": recommendation.status,
+            "recommended_candidate_id": recommendation.recommended_candidate_id,
+            "shortlisted_candidate_ids": list(recommendation.shortlisted_candidate_ids),
+            "message": recommendation.message,
+        },
+        "source_preserved": True,
+        "release_authorized": False,
+        "production_changes_applied": False,
+    }

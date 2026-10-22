@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="DataReady: governed AI data-repair proposals, independent tests, audit evidence, and human authority.">
+<title>DataReady | Evidence before execution</title>
+<style>
+:root{--night:#10171a;--night2:#151f22;--surface:#1c292b;--line:#304044;--text:#f4f7ed;--muted:#a4b4b1;--lime:#c5f17b;--sea:#74d9c4;--amber:#ffc885;--red:#ffa29f}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--night);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;line-height:1.55}
+a{color:inherit;text-decoration:none}
+button{font:inherit}
+.container{width:min(1160px,calc(100% - 44px));margin-inline:auto}
+.site-header{border-bottom:1px solid #263337;background:rgba(16,23,26,.95);position:sticky;top:0;z-index:10;backdrop-filter:blur(14px)}
+.topbar{height:74px;display:flex;align-items:center;justify-content:space-between;gap:22px}
+.logo{display:flex;align-items:center;gap:11px;font-size:19px;font-weight:800;letter-spacing:-.7px}
+.logomark{width:34px;height:34px;border-radius:11px;background:var(--lime);color:#152019;display:grid;place-items:center;font-weight:900;position:relative}
+.logomark:after{content:"";position:absolute;right:-4px;top:4px;width:7px;height:7px;background:var(--sea);border:2px solid var(--night);border-radius:50%}
+nav{display:flex;align-items:center;gap:27px;font-size:13px;color:var(--muted);font-weight:650}
+nav a:hover,a.underlined:hover{color:var(--lime)}
+.nav-cta{border:1px solid #577b54;border-radius:100px;padding:9px 17px;color:var(--lime)}
+.hero{padding:76px 0 67px;display:grid;grid-template-columns:1.15fr .85fr;gap:38px;align-items:center}
+.kicker{font-size:11px;letter-spacing:.19em;font-weight:800;color:var(--sea);text-transform:uppercase}
+.hero h1{font-size:clamp(48px,6.15vw,84px);line-height:1.02;letter-spacing:-.07em;margin:18px 0 22px;font-weight:840}
+.hero h1 span{color:var(--lime);display:block}
+.hero-copy{font-size:17px;color:var(--muted);max-width:590px;margin:0}
+.cta-row{display:flex;gap:12px;margin-top:29px;align-items:center;flex-wrap:wrap}
+.button{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:13px 20px;border-radius:11px;font-weight:740;font-size:14px;border:1px solid transparent;cursor:pointer}
+.primary{background:var(--lime);color:#19231b}
+.primary:hover{background:#d8ff9c}
+.secondary{color:var(--text);border-color:var(--line);background:transparent}
+.secondary:hover{border-color:var(--muted)}
+.hero-card{border:1px solid #3a5349;border-radius:23px;background:linear-gradient(145deg,#263c36,#192629 62%);padding:27px;box-shadow:0 18px 58px #0003}
+.panel-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:800}
+.dot{width:7px;height:7px;background:var(--lime);border-radius:100%;box-shadow:0 0 0 5px #c5f17b18;display:inline-block;margin-right:8px}
+.trace{display:grid;grid-template-columns:22px 1fr;gap:0 12px;margin:24px 0 8px}
+.step-dot{width:22px;height:22px;border:1px solid #617575;border-radius:50%;display:grid;place-items:center;font-size:11px;color:var(--lime)}
+.step-line{width:1px;height:34px;background:#536763;margin:0 auto}
+.trace-label{font-size:14px;font-weight:680;line-height:22px}
+.trace-detail{color:var(--muted);font-size:12px;margin:0 0 17px}
+.hero-card-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:18px;margin-top:7px;border-top:1px solid #53675e;font-size:12px}
+.hero-card-bottom strong{font-size:13px;color:var(--lime)}
+.mode-strip{border-block:1px solid var(--line);padding:19px 0;background:#172226}
+.mode-inner{display:flex;gap:19px;align-items:center}
+.mode-pill{background:#2b4436;color:var(--lime);border:1px solid #56714c;border-radius:6px;padding:6px 11px;font-size:11px;font-weight:850;white-space:nowrap;letter-spacing:.05em}
+.mode-inner p{margin:0;color:#bed0c7;font-size:13px}
+.section{padding:74px 0 0}
+.section-heading{display:flex;align-items:end;justify-content:space-between;gap:22px;margin-bottom:25px}
+.section-heading h2{font-size:clamp(30px,3.6vw,44px);line-height:1.1;letter-spacing:-.05em;margin:9px 0 0}
+.section-heading p{color:var(--muted);max-width:460px;margin:0;font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.stat{padding:22px 21px;background:var(--night2);border:1px solid var(--line);border-radius:15px}
+.stat .stat-label{font-size:12px;color:var(--muted);margin:0 0 12px}
+.stat .stat-value{font-size:36px;line-height:1;letter-spacing:-.055em;font-weight:820}
+.stat .stat-caption{margin-top:13px;color:var(--muted);font-size:11px}
+.stat.highlight{border-color:#8aac70;background:#203029}
+.stat.highlight .stat-value{color:var(--lime)}
+.two-col{display:grid;grid-template-columns:.92fr 1.08fr;gap:16px}
+.panel{border:1px solid var(--line);border-radius:18px;background:var(--night2);padding:26px}
+.panel h3{font-size:19px;letter-spacing:-.03em;margin:7px 0 15px}
+.panel p{color:var(--muted);font-size:13px;margin:0 0 17px}
+.sample-table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.sample-table th{color:var(--muted);font-weight:660;border-bottom:1px solid var(--line);padding:10px 12px}
+.sample-table td{padding:11px 12px;border-bottom:1px solid #263638}
+.sample-table tr:nth-child(3){color:var(--amber)}
+.sample-table .missing{color:var(--red);font-weight:650}
+.small-note{font-size:11px!important;margin-top:16px!important}
+.issue-list{display:flex;flex-wrap:wrap;gap:8px}
+.issue{border:1px solid #5a5a4d;background:#302d24;color:#ffdea8;padding:6px 10px;border-radius:7px;font-size:11px;font-weight:720}
+.arrow-v{font-size:24px;color:var(--sea);margin:10px 0}
+.result-good{font-weight:790;color:var(--lime);font-size:19px}
+.funnel{display:flex;flex-direction:column;gap:10px}
+.funnel-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #29383b;padding:13px 0;font-size:13px}
+.funnel-row span:first-child{color:var(--muted)}
+.funnel-row strong{font-weight:730}
+.candidates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.candidate{border:1px solid var(--line);border-radius:18px;background:var(--night2);padding:27px;min-height:270px}
+.candidate.winner{border-color:#759f66;background:linear-gradient(135deg,#203429,#182626 75%)}
+.candidate-top{display:flex;justify-content:space-between;gap:10px;align-items:start}
+.candidate-title{font-weight:820;font-size:19px;letter-spacing:-.025em}
+.tag{display:inline-flex;align-items:center;border:1px solid #6f6960;color:#ffd5a4;background:#332d25;border-radius:50px;padding:5px 10px;font-size:10px;letter-spacing:.045em;font-weight:820;text-transform:uppercase;white-space:nowrap}
+.tag.good{border-color:#577d57;color:var(--lime);background:#284331}
+.action{color:var(--muted);font-size:12px;margin:17px 0}
+.score-line{display:flex;align-items:end;gap:12px;margin:15px 0 6px}
+.score-line strong{font-size:38px;letter-spacing:-.05em;line-height:1}
+.score-line span{font-size:12px;color:var(--muted)}
+.bar-track{height:8px;border-radius:99px;background:#334046;overflow:hidden;margin:13px 0}
+.bar-fill{height:100%;background:var(--lime);border-radius:99px;transition:width .35s}
+.candidate-reason{padding-top:15px;border-top:1px solid #354447;color:#bdcfca;font-size:12px;line-height:1.65}
+.verdict{border-radius:20px;padding:34px;border:1px solid #577759;background:linear-gradient(135deg,#263b31,#152425);display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center}
+.verdict .big{font-size:26px;font-weight:830;letter-spacing:-.04em;margin:8px 0}
+.verdict p{font-size:13px;color:#bdd0c2;margin:0}
+.verdict-badge{border:1px solid #618a66;border-radius:12px;padding:15px 22px;color:var(--lime);font-size:13px;font-weight:750}
+.audit-flow{display:grid;grid-template-columns:repeat(5,1fr);gap:11px}
+.audit-stage{background:var(--night2);border:1px solid var(--line);border-radius:14px;padding:17px}
+.audit-stage .number{font-size:11px;color:var(--lime);font-weight:790}
+.audit-stage strong{font-size:14px;display:block;margin:10px 0 4px}
+.audit-stage p{color:var(--muted);margin:0;font-size:11px}
+.evidence-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.evidence-card{border:1px solid var(--line);background:var(--night2);border-radius:14px;padding:23px}
+.evidence-card strong{font-size:14px}
+.evidence-card p{font-size:12px;color:var(--muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;overflow-wrap:anywhere;color:var(--sea)}
+.check{color:var(--lime);font-weight:750}
+.warning{color:var(--amber)}
+.footer{border-top:1px solid var(--line);margin-top:78px;padding:29px 0 36px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.loading{opacity:.7}
+.status-text{color:var(--sea);font-size:12px}
+#candidate-cards:empty:after{content:"Loading evaluation evidence…";color:var(--muted);font-size:14px}
+.error{color:var(--red)}
+@media(max-width:900px){.hero{grid-template-columns:1fr;gap:30px;padding-top:50px}.stats{grid-template-columns:repeat(2,1fr)}.audit-flow{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:660px){nav{gap:12px}nav a:not(.nav-cta){display:none}.topbar{height:64px}.hero h1{font-size:54px}.hero-card{padding:19px}.two-col,.candidates,.evidence-grid{grid-template-columns:1fr}.stats{gap:9px}.stat{padding:17px}.stat .stat-value{font-size:31px}.mode-inner{align-items:flex-start;flex-direction:column;gap:9px}.section{padding-top:48px}.section-heading{align-items:flex-start;flex-direction:column}.audit-flow{grid-template-columns:1fr 1fr}.verdict{grid-template-columns:1fr}.panel{padding:20px}.footer{margin-top:50px}}
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="container topbar">
+    <a href="/showcase" class="logo" aria-label="DataReady homepage"><span class="logomark">D</span><span>DataReady</span></a>
+    <nav aria-label="Main navigation">
+      <a href="#analysis">Analysis</a>
+      <a href="#candidates">Candidates</a>
+      <a href="#evidence">Evidence</a>
+      <a class="nav-cta" href="https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates" target="_blank" rel="noopener noreferrer">View source ↗</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <section class="container hero" aria-labelledby="hero-title">
+    <div>
+      <div class="kicker">NVIDIA NEMOTRON &nbsp;×&nbsp; NEBIUS TOKEN FACTORY</div>
+      <h1 id="hero-title">Evidence before <span>execution.</span></h1>
+      <p class="hero-copy">DataReady doesn't trust the first AI repair. It investigates the data, evaluates competing strategies under policy, then recommends only what the evidence supports.</p>
+      <div class="cta-row">
+        <a class="button primary" href="#candidates">Explore the candidates <span aria-hidden="true">↘</span></a>
+        <button class="button secondary" type="button" id="refresh">Re-run local evidence ↻</button>
+      </div>
+      <p class="status-text" id="load-status" role="status" aria-live="polite">Loading independently evaluated reference scenario…</p>
+    </div>
+    <aside class="hero-card" aria-label="DataReady decision workflow">
+      <div class="panel-top"><span class="eyebrow">Decision trace</span><span style="font-size:11px;color:var(--lime)"><span class="dot"></span>PROTECTED</span></div>
+      <div class="trace">
+        <div class="step-dot">✓</div><div><div class="trace-label">Audit evidence</div><p class="trace-detail">Inspect dataset without rewriting the source</p></div>
+        <div class="step-line"></div><div></div>
+        <div class="step-dot">✓</div><div><div class="trace-label">NVIDIA-generated strategies</div><p class="trace-detail">Recorded action types · safe public replay</p></div>
+        <div class="step-line"></div><div></div>
+        <div class="step-dot">✓</div><div><div class="trace-label">Policy + isolated evaluation</div><p class="trace-detail">No candidate authorizes its own execution</p></div>
+        <div class="step-line"></div><div></div>
+        <div class="step-dot">✓</div><div><div class="trace-label">Evidence-based recommendation</div><p class="trace-detail">Independent re-audit, not model self-assessment</p></div>
+      </div>
+      <div class="hero-card-bottom"><span>Production write access</span><strong>NOT GRANTED</strong></div>
+    </aside>
+  </section>
+
+  <div class="mode-strip">
+    <div class="container mode-inner">
+      <span class="mode-pill">PUBLIC REPLAY MODE</span>
+      <p>This page reconstructs strategies observed in a real Nemotron run and re-tests them locally each time. <strong>No live model call or billable API request.</strong> The live NVIDIA endpoint remains access-controlled.</p>
+    </div>
+  </div>
+
+  <section class="section container" id="analysis" aria-labelledby="overview">
+    <div class="section-heading"><div><div class="kicker">01 / AUDIT</div><h2 id="overview">A measurable problem.</h2></div><p>A synthetic inventory dataset contains an exact duplicate and a missing category. The original data must remain unchanged.</p></div>
+    <div class="stats">
+      <article class="stat"><div class="stat-label">Starting audit score</div><div class="stat-value" data-field="score-before">—</div><div class="stat-caption">Before any candidate repair</div></article>
+      <article class="stat highlight"><div class="stat-label">Recommended trial score</div><div class="stat-value" data-field="score-after">—</div><div class="stat-caption">Freshly re-audited trial output</div></article>
+      <article class="stat"><div class="stat-label">Competing strategies</div><div class="stat-value" data-field="candidate-count">—</div><div class="stat-caption">Compared independently</div></article>
+      <article class="stat"><div class="stat-label">Source integrity</div><div class="stat-value" data-field="source-status">—</div><div class="stat-caption">SHA-256 before and after</div></article>
+    </div>
+    <div class="two-col" style="margin-top:16px">
+      <article class="panel">
+        <div class="eyebrow">Synthetic input · 4 records</div><h3>Inventory sample</h3>
+        <table class="sample-table"><thead><tr><th>Row</th><th>Item</th><th>Category</th></tr></thead>
+        <tbody><tr><td>01</td><td>A</td><td>tools</td></tr><tr><td>02</td><td>A</td><td>tools <span class="warning">· duplicate</span></td></tr><tr><td>03</td><td>B</td><td class="missing">missing</td></tr><tr><td>04</td><td>C</td><td>parts</td></tr></tbody></table>
+        <p class="small-note">Illustrative dataset; no real customer records or confidential data.</p>
+      </article>
+      <article class="panel">
+        <div class="eyebrow">Deterministic source audit</div><h3>Findings and boundaries</h3>
+        <div class="issue-list"><span class="issue">1 DUPLICATE_ROW</span><span class="issue">1 MISSING_VALUE</span></div>
+        <div class="funnel">
+          <div class="funnel-row"><span>Original status</span><strong>QUARANTINED</strong></div>
+          <div class="funnel-row"><span>Repair permissions</span><strong>Bounded demo policy</strong></div>
+          <div class="funnel-row"><span>Candidate execution</span><strong>Temporary copies only</strong></div>
+          <div class="funnel-row"><span>Release authority</span><strong class="warning">Human-controlled</strong></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section container" id="candidates" aria-labelledby="candidate-heading">
+    <div class="section-heading"><div><div class="kicker">02 / COMPETITION</div><h2 id="candidate-heading">Two strategies. One result.</h2></div><p>The same input. Separate trial copies. Comparable evidence. A higher model confidence or prettier explanation earns no special treatment.</p></div>
+    <div id="candidate-cards" class="candidates" aria-live="polite"></div>
+    <div class="verdict" style="margin-top:18px">
+      <div><div class="eyebrow">Independent recommendation</div><div class="big" data-field="decision">Evaluating…</div><p id="decision-reason">Each candidate is evaluated against policy, source-integrity checks, and fresh audit findings.</p></div>
+      <div class="verdict-badge" data-field="recommended">PENDING</div>
+    </div>
+  </section>
+
+  <section class="section container" id="evidence" aria-labelledby="evidence-heading">
+    <div class="section-heading"><div><div class="kicker">03 / VERIFICATION</div><h2 id="evidence-heading">A verifiable trail.</h2></div><p>The AI can propose a repair; it cannot determine its own permissions, fabricate the test outcome, or approve a production release.</p></div>
+    <div class="audit-flow">
+      <article class="audit-stage"><div class="number">01</div><strong>Fingerprint</strong><p>Bind proposals to exact source SHA-256.</p></article>
+      <article class="audit-stage"><div class="number">02</div><strong>Policy gate</strong><p>Approve only allowlisted actions.</p></article>
+      <article class="audit-stage"><div class="number">03</div><strong>Trial copies</strong><p>Run candidates independently.</p></article>
+      <article class="audit-stage"><div class="number">04</div><strong>Re-audit</strong><p>Measure fresh findings and regressions.</p></article>
+      <article class="audit-stage"><div class="number">05</div><strong>Recommend</strong><p>Evidence informs—not authorizes—release.</p></article>
+    </div>
+    <div class="evidence-grid" style="margin-top:17px">
+      <article class="evidence-card"><strong>Original source SHA-256</strong><p>Verified again after executing isolated trials.</p><div class="mono" data-field="fingerprint">Loading fingerprint…</div></article>
+      <article class="evidence-card"><strong>Unresolved findings are disclosed</strong><p id="remaining">Loading post-trial audit findings…</p><span class="check">No production changes applied</span></article>
+    </div>
+    <div class="panel" style="margin-top:16px">
+      <div class="eyebrow">Transparency note</div>
+      <h3>This page is a reproducible showcase, not live inference.</h3>
+      <p>A live NVIDIA Nemotron model call through Nebius previously produced these two action types for this scenario. The public view reconstructs the proposed action types, then runs new policy checks, isolated trials, and audits. The justifications displayed here are reference text, not preserved verbatim model output. The separate live inference API requires authentication to prevent uncontrolled charges.</p>
+      <div class="cta-row">
+        <a class="button secondary" href="/showcase/evidence" target="_blank" rel="noopener">Inspect JSON evidence ↗</a>
+        <a class="button secondary" href="/docs" target="_blank" rel="noopener">Explore API docs ↗</a>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="container footer"><span>DataReady Autopilot · Built for reliable, governed AI data operations</span><span>Model proposes. Evidence decides. Humans authorize.</span></footer>
+<script>
+(function(){
+  "use strict";
+  var status = document.getElementById("load-status");
+  function field(name,value){
+    var el=document.querySelector('[data-field="'+name+'"]');
+    if(el)el.textContent=String(value);
+  }
+  function element(tag,cls,text){
+    var node=document.createElement(tag);
+    if(cls)node.className=cls;
+    if(text!==undefined)node.textContent=String(text);
+    return node;
+  }
+  function scoreText(value){return typeof value==="number" ? value+"/100" : "—";}
+  function makeCard(c,chosen){
+    var card=element("article","candidate"+(chosen?" winner":""));
+    var top=element("div","candidate-top");
+    top.appendChild(element("div","candidate-title",c.id));
+    top.appendChild(element("span","tag"+(chosen?" good":""),chosen?"Recommended":(c.disposition==="NO_MEASURED_IMPROVEMENT"?"No measured gain":c.disposition)));
+    card.appendChild(top);
+    card.appendChild(element("div","action",c.actions.join(" + ").replaceAll("_"," ")));
+    var sc=element("div","score-line");
+    sc.appendChild(element("strong","",scoreText(c.after_score)));
+    sc.appendChild(element("span","","after isolated trial"));
+    card.appendChild(sc);
+    var track=element("div","bar-track");
+    var bar=element("div","bar-fill");
+    bar.style.width=Math.max(0,Math.min(100,Number(c.after_score)||0))+"%";
+    if(!chosen)bar.style.background="#ffcf92";
+    track.appendChild(bar);
+    card.appendChild(track);
+    card.appendChild(element("div","funnel-row","Rows: "+c.before_rows+" → "+(c.after_rows===null?"not run":c.after_rows)));
+    card.appendChild(element("div","funnel-row","Duplicates: "+c.before_duplicates+" → "+(c.after_duplicates===null?"not run":c.after_duplicates)));
+    card.appendChild(element("div","candidate-reason",c.reason));
+    return card;
+  }
+  async function refresh(){
+    status.className="status-text";
+    status.textContent="Re-auditing both reference candidates without calling a model…";
+    var button=document.getElementById("refresh");
+    button.disabled=true;
+    try{
+      var response=await fetch("/showcase/evidence",{cache:"no-store",headers:{"Accept":"application/json"}});
+      if(!response.ok)throw new Error("Evidence endpoint returned "+response.status);
+      var data=await response.json();
+      field("score-before",scoreText(data.before.score));
+      field("score-after",data.after_recommended?scoreText(data.after_recommended.score):"—");
+      field("candidate-count",data.candidates.length);
+      field("source-status",data.source_preserved?"Intact":"CHECK");
+      field("fingerprint",data.source_sha256);
+      field("decision",data.recommendation.status.replaceAll("_"," "));
+      field("recommended",data.recommendation.candidate_id||"Human review / abstain");
+      document.getElementById("decision-reason").textContent=
+        data.recommendation.status==="RECOMMENDED"?
+        "One candidate achieved measurable audit improvement without a detected regression. This is a recommendation, not authorization to release the data.":
+        "The evidence did not justify a unique automatic recommendation. Human authority is retained.";
+      var remaining=document.getElementById("remaining");
+      remaining.textContent= data.after_recommended && data.after_recommended.issues.length?
+        data.after_recommended.issues.map(function(i){return i.code+" ("+i.count+")";}).join(" · ")+". Audit issues remain after the recommended trial.":
+        "No remaining audit findings in this trial (not proof of business correctness).";
+      var cards=document.getElementById("candidate-cards");
+      cards.replaceChildren();
+      data.candidates.forEach(function(c){
+        cards.appendChild(makeCard(c,c.id===data.recommendation.candidate_id));
+      });
+      status.textContent="Re-evaluation complete · no external model call · source preserved";
+    }catch(error){
+      status.className="status-text error";
+      status.textContent="Unable to load current trial evidence. "+error.message;
+    }finally{button.disabled=false;}
+  }
+  document.getElementById("refresh").addEventListener("click",refresh);
+  refresh();
+}());
+</script>
+</body>
+</html>

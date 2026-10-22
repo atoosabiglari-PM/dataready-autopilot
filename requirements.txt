@@ -13,5 +13,8 @@ google-cloud-storage>=3.0,<4.0
 google-cloud-firestore>=2.20,<3.0
 google-cloud-pubsub>=2.31,<3.0
 
+# Nebius Token Factory (OpenAI-compatible SDK)
+openai>=3.36,<4.0
+
 # Application configuration
 pydantic-settings>=2.10,<3.0

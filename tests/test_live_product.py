@@ -86,6 +86,25 @@ def test_customer_page_is_actual_upload_application():
     assert "X-DataReady-Demo-Token" not in response.text
 
 
+def test_anonymous_browser_session_is_issued_without_login():
+    fresh = TestClient(live_product.app)
+    page = fresh.get("/")
+    assert page.status_code == 200
+    assert live_product.SESSION_COOKIE in fresh.cookies
+    cookie = page.headers.get("set-cookie", "")
+    assert "httponly" in cookie.lower()
+    assert "samesite=lax" in cookie.lower()
+    assert 'id="access-code"' not in page.text
+
+
+def test_forged_guest_cookie_cannot_start_paid_inference(monkeypatch):
+    monkeypatch.setattr(live_product, "propose_nebius_candidates", forbidden)
+    fresh = TestClient(live_product.app)
+    fresh.cookies.set(live_product.SESSION_COOKIE, "forged_cookie.invalid_signature")
+    result = fresh.post("/api/analyze", files=upload())
+    assert result.status_code == 403
+
+
 def test_arbitrary_csv_audit_needs_no_model_token(monkeypatch):
     monkeypatch.setattr(live_product, "propose_nebius_candidates", forbidden)
     response = client.post("/api/audit", files=upload())

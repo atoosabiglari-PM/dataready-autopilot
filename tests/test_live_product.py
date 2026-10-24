@@ -206,6 +206,7 @@ def test_excel_without_saved_formula_values_audits_but_requires_recalculation(
 def test_excel_saved_formula_values_are_analyzed_without_formula_execution():
     """Simulate an Excel-saved cached result, not an openpyxl-calculated value."""
     from zipfile import ZipFile
+    import xml.etree.ElementTree as ET
 
     openpyxl = pytest.importorskip("openpyxl")
     wb = openpyxl.Workbook()
@@ -222,12 +223,22 @@ def test_excel_saved_formula_values_are_analyzed_without_formula_execution():
             for info in source_archive.infolist():
                 data = source_archive.read(info.filename)
                 if info.filename == "xl/worksheets/sheet1.xml":
-                    assert b"<f>2+2</f><v></v>" in data
-                    data = data.replace(
-                        b"<f>2+2</f><v></v>",
-                        b"<f>2+2</f><v>4</v>",
-                        1,
+                    # Excel writers differ in XML whitespace and empty-value
+                    # serialization. Patch the formula cache semantically.
+                    namespace = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+                    ET.register_namespace("", namespace)
+                    document = ET.fromstring(data)
+                    cell = document.find(
+                        ".//{%s}c[@r='B2']" % namespace
                     )
+                    assert cell is not None
+                    formula = cell.find("{%s}f" % namespace)
+                    assert formula is not None and formula.text == "2+2"
+                    cached = cell.find("{%s}v" % namespace)
+                    if cached is None:
+                        cached = ET.SubElement(cell, "{%s}v" % namespace)
+                    cached.text = "4"
+                    data = ET.tostring(document, encoding="utf-8")
                 target_archive.writestr(info, data)
 
     response = client.post(

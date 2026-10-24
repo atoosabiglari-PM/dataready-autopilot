@@ -30,16 +30,16 @@ def test_public_showcase_runs_isolated_evidence():
 
 
 def test_public_cloud_run_entrypoint_has_no_billable_routes():
-    routes = {getattr(route, "path", None) for route in app.routes}
-    assert "/showcase" in routes
-    assert "/showcase/evidence" in routes
-    assert "/demo/repair" not in routes
-    assert "/demo/nebius-candidates" not in routes
-    assert "/openapi.json" in routes
-    schema = client.get("/openapi.json").json()
-    assert "/demo/repair" not in schema["paths"]
-    assert "/demo/nebius-candidates" not in schema["paths"]
-    assert "/showcase/evidence" in schema["paths"]
+    # Verify actual HTTP dispatch, not FastAPI's internal router structure.
+    assert client.get("/showcase").status_code == 200
+    assert client.get("/showcase/evidence").status_code == 200
+    assert client.post("/demo/repair").status_code == 404
+    assert client.post("/demo/nebius-candidates").status_code == 404
+    schema_response = client.get("/openapi.json")
+    assert schema_response.status_code == 200
+    exposed = schema_response.json()["paths"]
+    assert "/demo/repair" not in exposed
+    assert "/demo/nebius-candidates" not in exposed
 
 
 def test_public_invalid_posts_never_reach_a_model(monkeypatch):
@@ -62,7 +62,11 @@ def test_public_health_needs_no_credentials():
 
 
 def test_main_app_still_has_old_and_new_routes():
-    routes = {getattr(route, "path", None) for route in web.app.routes}
-    assert "/demo/repair" in routes
-    assert "/demo/nebius-candidates" in routes
-    assert "/showcase" in routes
+    # Inspect the schema for protected routes without making model calls.
+    main_client = TestClient(web.app)
+    response = main_client.get("/openapi.json")
+    assert response.status_code == 200
+    exposed = response.json()["paths"]
+    assert "/demo/repair" in exposed
+    assert "/demo/nebius-candidates" in exposed
+    assert main_client.get("/showcase").status_code == 200

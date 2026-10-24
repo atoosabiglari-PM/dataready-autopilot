@@ -12,8 +12,8 @@ import os
 from datetime import datetime, timezone
 from threading import Lock
 
-DEFAULT_GLOBAL_DAILY_LIMIT = 30
-DEFAULT_SESSION_DAILY_LIMIT = 2
+DEFAULT_GLOBAL_DAILY_LIMIT = 50
+DEFAULT_SESSION_DAILY_LIMIT = 5
 _COLLECTION = "dataready_nebius_quotas"
 _LOCAL_COUNTS: dict[str, int] = {}
 _LOCAL_LOCK = Lock()

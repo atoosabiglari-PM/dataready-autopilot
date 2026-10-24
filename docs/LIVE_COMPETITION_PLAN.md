@@ -59,7 +59,7 @@ separate from the public replay service and existing Gemini service.
 **Not an unrestricted general-purpose data platform:** This competition build
 supports tabular `.csv`, flat `.json`, and first-sheet `.xlsx`, up to 10 MB,
 100,000 data rows, and 200 columns. Unsupported formats and risky inputs fail
-closed. XLSX formulas must be converted to values in advance. Do not upload
+closed. XLSX formulas are not executed or recalculated: saved calculated results can be audited with a clear warning. Missing cached formula results allow an audit of the available values, but block AI planning and repaired-file export until the workbook has been recalculated and saved. Do not upload
 confidential customer information or regulated personal data to the public demo.
 A complete production product would require persistent identity, per-customer
 isolation, compliance controls, scaling, billing, and additional formats.

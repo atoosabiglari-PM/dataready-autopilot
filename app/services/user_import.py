@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import csv
 import json
+from dataclasses import dataclass, field
+from itertools import zip_longest
 from pathlib import Path
 from typing import Any
 from zipfile import BadZipFile, ZipFile
@@ -26,6 +28,15 @@ MAX_XLSX_EXPANDED_BYTES = 64 * 1024 * 1024
 
 class CustomerUploadError(ValueError):
     """User-provided data is unsupported or exceeds the agreed safety limits."""
+
+
+@dataclass
+class ImportDiagnostics:
+    """Disclosure of spreadsheet conversion choices for this one request."""
+
+    warnings: list[str] = field(default_factory=list)
+    uncached_formulas: int = 0
+    cached_formulas: int = 0
 
 
 def _scalar(value: Any) -> str:
@@ -96,7 +107,16 @@ def _convert_json(source: Path, destination: Path) -> None:
         raise CustomerUploadError("The converted CSV exceeds the safety size limit.")
 
 
-def _convert_excel(source: Path, destination: Path) -> None:
+def _convert_excel(
+    source: Path,
+    destination: Path,
+    diagnostics: ImportDiagnostics | None = None,
+) -> None:
+    """Read saved formula results, never evaluate or execute Excel formulas.
+
+    Where a formula has no cached result, preserve a visible inert placeholder
+    and prohibit AI planning/export until the workbook is recalculated.
+    """
     try:
         with ZipFile(source) as archive:
             infos = archive.infolist()
@@ -118,14 +138,21 @@ def _convert_excel(source: Path, destination: Path) -> None:
     except ImportError as error:
         raise CustomerUploadError("Excel support is not installed on this server.") from error
 
-    workbook = None
+    formulas = None
+    calculated = None
+    cached_count = 0
+    unresolved_count = 0
     try:
-        workbook = load_workbook(
+        formulas = load_workbook(
             source, read_only=True, data_only=False, keep_links=False
         )
-        if not workbook.worksheets:
+        calculated = load_workbook(
+            source, read_only=True, data_only=True, keep_links=False
+        )
+        if not formulas.worksheets or not calculated.worksheets:
             raise CustomerUploadError("The workbook contains no worksheets.")
-        worksheet = workbook.worksheets[0]
+        worksheet = formulas.worksheets[0]
+        cached_sheet = calculated.worksheets[0]
         if worksheet.max_column and worksheet.max_column > MAX_COLUMNS:
             raise CustomerUploadError("The worksheet exceeds the column limit.")
         if worksheet.max_row and worksheet.max_row > MAX_ROWS + 1:
@@ -133,20 +160,28 @@ def _convert_excel(source: Path, destination: Path) -> None:
 
         with destination.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
-            count = 0
-            for cells in worksheet.iter_rows():
-                count += 1
+            for count, cell_pair in enumerate(
+                zip_longest(worksheet.iter_rows(), cached_sheet.iter_rows()),
+                start=1,
+            ):
+                formula_cells, cached_cells = cell_pair
                 if count > MAX_ROWS + 1:
                     raise CustomerUploadError("The worksheet exceeds the row limit.")
-                if len(cells) > MAX_COLUMNS:
-                    raise CustomerUploadError("The worksheet exceeds the column limit.")
+                if formula_cells is None or cached_cells is None:
+                    raise CustomerUploadError("Workbook formula and value views differ.")
+                if len(formula_cells) != len(cached_cells) or len(formula_cells) > MAX_COLUMNS:
+                    raise CustomerUploadError("The worksheet exceeds safe column limits.")
                 row: list[str] = []
-                for cell in cells:
+                for cell, cached_cell in zip(formula_cells, cached_cells, strict=True):
                     if getattr(cell, "data_type", None) == "f":
-                        raise CustomerUploadError(
-                            "Formula cells must be converted to values before upload."
-                        )
-                    value = cell.value
+                        if cached_cell.value is None:
+                            unresolved_count += 1
+                            value = "[UNEVALUATED_EXCEL_FORMULA]"
+                        else:
+                            cached_count += 1
+                            value = cached_cell.value
+                    else:
+                        value = cell.value
                     if value is not None and not isinstance(value, (str, int, float, bool)):
                         value = str(value)
                     row.append(_scalar(value))
@@ -154,17 +189,42 @@ def _convert_excel(source: Path, destination: Path) -> None:
 
         if destination.stat().st_size > MAX_FILE_SIZE_BYTES:
             raise CustomerUploadError("The converted worksheet exceeds the size limit.")
+
+        if diagnostics is not None:
+            diagnostics.cached_formulas += cached_count
+            diagnostics.uncached_formulas += unresolved_count
+            if cached_count:
+                diagnostics.warnings.append(
+                    f"{cached_count} Excel formula cell(s) were read from their saved results. "
+                    "DataReady did not run or recalculate formulas; results may be stale."
+                )
+            if unresolved_count:
+                diagnostics.warnings.append(
+                    f"{unresolved_count} Excel formula cell(s) have no saved calculated value. "
+                    "DataReady marked them as unevaluated. Audit can continue, but AI "
+                    "planning and repaired-file export are disabled until the workbook "
+                    "is recalculated and saved with results in Excel or another spreadsheet app."
+                )
+        elif unresolved_count:
+            raise CustomerUploadError(
+                "Excel formula results are missing. Recalculate and save the workbook."
+            )
     except CustomerUploadError:
         raise
     except Exception as error:
         raise CustomerUploadError("The XLSX workbook could not be safely read.") from error
     finally:
-        if workbook is not None:
-            workbook.close()
+        if formulas is not None:
+            formulas.close()
+        if calculated is not None:
+            calculated.close()
 
 
 async def receive_customer_dataset(
-    upload: UploadFile, directory: Path
+    upload: UploadFile,
+    directory: Path,
+    *,
+    diagnostics: ImportDiagnostics | None = None,
 ) -> Path:
     """Receive a bounded upload, normalize if needed, and return a local CSV.
 
@@ -203,5 +263,5 @@ async def receive_customer_dataset(
     if extension == ".json":
         _convert_json(incoming, destination)
     else:
-        _convert_excel(incoming, destination)
+        _convert_excel(incoming, destination, diagnostics)
     return destination

@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="DataReady: upload real data, analyze quality risks, compare live NVIDIA Nemotron repair candidates, and approve a verified copy.">
+<title>DataReady | Live AI Data Readiness</title>
+<style>
+:root{--bg:#101818;--bg2:#151f20;--surface:#1d2a2a;--surface2:#233332;--line:#344643;--text:#f5f7f0;--muted:#afc0b9;--lime:#c4ef86;--sea:#82ddc9;--gold:#f1ce92;--red:#ffaba5}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;line-height:1.55}
+a{color:inherit;text-decoration:none}
+button,input{font:inherit}
+button:disabled{opacity:.5;cursor:not-allowed}
+.container{width:min(1100px,calc(100% - 40px));margin:auto}
+nav{height:72px;display:flex;justify-content:space-between;align-items:center;gap:18px}
+.header{border-bottom:1px solid var(--line);background:#111a1a}
+.brand{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:850;letter-spacing:-.045em}
+.mark{background:var(--lime);color:#17231a;border-radius:11px;width:36px;height:36px;display:grid;place-items:center;font-size:21px;position:relative}
+.mark:after{content:"";width:8px;height:8px;background:var(--sea);border:2px solid var(--bg);border-radius:50%;position:absolute;right:-4px;top:4px}
+.navlinks{display:flex;gap:22px;align-items:center;font-size:13px;color:var(--muted)}
+.navlinks a:hover{color:var(--lime)}
+.kicker{font-size:11px;font-weight:840;text-transform:uppercase;letter-spacing:.18em;color:var(--sea)}
+.hero{padding:68px 0 56px;display:grid;grid-template-columns:1fr .88fr;gap:45px;align-items:center}
+.hero h1{font-size:clamp(42px,6vw,72px);letter-spacing:-.065em;line-height:1.06;margin:14px 0 22px}
+.hero h1 span{color:var(--lime)}
+.lead{max-width:520px;color:var(--muted);font-size:17px}
+.hero-mini{margin-top:30px;display:flex;gap:12px;flex-wrap:wrap}
+.hero-mini span{padding:8px 12px;border:1px solid var(--line);border-radius:100px;color:#c9d8cf;font-size:12px}
+.preview{background:linear-gradient(142deg,#233d34,#192629);border:1px solid #56715c;border-radius:22px;padding:27px}
+.previewhead{display:flex;justify-content:space-between;color:var(--sea);font-size:11px;font-weight:760;letter-spacing:.12em}
+.previewrow{display:flex;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid #43534c;font-size:14px}
+.previewrow:last-child{border:0}
+.num{color:var(--lime);font:600 11px ui-monospace,monospace}
+.previewrow span:last-child{color:#d6e5d8}
+.endnote{font-size:12px;color:var(--lime);margin-top:15px}
+section.main{padding:24px 0 80px}
+.flexsection{display:flex;justify-content:space-between;align-items:end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+h2{font-size:34px;letter-spacing:-.052em;line-height:1.2;margin:6px 0}
+.section-caption{font-size:13px;color:var(--muted);max-width:450px}
+.workbench{display:grid;grid-template-columns:1fr .65fr;gap:15px}
+.panel{background:var(--bg2);border:1px solid var(--line);padding:26px;border-radius:17px}
+.panel h3{margin:0 0 16px;font-size:19px;letter-spacing:-.025em}
+.drop{border:1px dashed #6e9275;background:#203029;border-radius:15px;padding:32px 20px;text-align:center;transition:border-color .2s,background .2s;cursor:pointer;display:block}
+.drop.drag{border-color:var(--lime);background:#2c4336}
+.drop .uploadmark{display:grid;place-items:center;margin:0 auto 12px;width:42px;height:42px;background:#344f3b;border-radius:11px;color:var(--lime);font-size:24px}
+.drop strong{display:block;font-size:18px}
+.drop small{color:var(--muted);display:block;margin-top:6px}
+.drop em{display:inline-block;margin-top:15px;font-style:normal;font-weight:700;font-size:12px;color:var(--lime);border:1px solid #6d9a64;border-radius:8px;padding:7px 12px}
+#file-input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.file-selected{color:var(--sea);margin:14px 0 0;font-size:13px;min-height:20px;overflow-wrap:anywhere}
+.access{margin-top:21px}
+.access label{display:block;color:var(--text);font-size:13px;font-weight:700;margin-bottom:8px}
+.access input{width:100%;border:1px solid #49625e;background:#172222;border-radius:9px;padding:12px 14px;color:var(--text);outline:0}
+.access input:focus{border-color:var(--lime)}
+.access p{font-size:12px;color:var(--muted);margin:7px 0 0}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:23px}
+.btn{border-radius:10px;border:1px solid #627d69;font-size:13px;font-weight:780;padding:13px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.primary{background:var(--lime);color:#19251c;border-color:var(--lime)}
+.primary:hover:not(:disabled){background:#d5ff9c}
+.secondary{background:transparent;color:var(--text)}
+.secondary:hover:not(:disabled){border-color:var(--lime)}
+.ghost{border:0;background:none;color:var(--sea);font-weight:710;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.aside-list{display:grid;gap:18px;margin-top:21px}
+.asideitem{display:flex;gap:13px}
+.asideitem .bullet{border:1px solid #66846b;color:var(--lime);border-radius:9px;width:30px;height:30px;display:grid;place-items:center;flex:0 0 30px;font-weight:770;font-size:12px}
+.asideitem strong{font-size:14px}
+.asideitem p{margin:3px 0 0;font-size:12px;color:var(--muted)}
+.smallprint{font-size:12px;color:var(--muted);padding-top:16px;border-top:1px solid var(--line);margin-top:22px}
+#feedback{min-height:26px;font-size:13px;margin-top:14px;color:var(--sea);white-space:pre-line}
+#feedback.error{color:var(--red)}
+#results{display:none;margin-top:28px}
+.resulttop{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:17px;flex-wrap:wrap}
+.mode{font-size:11px;color:var(--lime);padding:7px 11px;border:1px solid #63845e;border-radius:100px;background:#24392b;font-weight:770}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{border:1px solid var(--line);background:var(--bg2);padding:20px;border-radius:13px}
+.stat .name{color:var(--muted);font-size:12px}
+.stat strong{display:block;font-size:29px;letter-spacing:-.045em;margin:6px 0}
+.stat small{font-size:11px;color:var(--muted)}
+.stat.highlight{background:#203327;border-color:#587e5b}
+.stat.highlight strong{color:var(--lime)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sectionlabel{font-size:12px;letter-spacing:.12em;font-weight:750;color:var(--sea);text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:700;border-bottom:1px solid var(--line);padding:9px 7px}
+td{padding:11px 7px;border-bottom:1px solid #303f3d;overflow-wrap:anywhere}
+.issue-critical{color:var(--red)}.issue-warning{color:var(--gold)}
+.candidate{border:1px solid var(--line);border-radius:14px;background:var(--bg2);padding:20px}
+.candidate.good{border-color:#74a56e;background:linear-gradient(145deg,#23392e,#1a2929)}
+.cardtop{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.cardtop strong{font-size:17px}
+.chip{font-size:10px;letter-spacing:.035em;border:1px solid #6d806c;border-radius:100px;padding:5px 9px;white-space:nowrap;color:#e5eacf}
+.chip.good{color:var(--lime);border-color:#729f74;background:#29472e}
+.candidate .actions-label{color:var(--muted);font-size:12px;margin:13px 0}
+.candidate .score{font-size:29px;font-weight:800;letter-spacing:-.05em}
+.candidate p{color:var(--muted);font-size:12px;margin:12px 0 0;border-top:1px solid #344744;padding-top:11px}
+.outcome{padding:26px;border:1px solid #66896c;border-radius:16px;background:linear-gradient(110deg,#274033,#182828);margin-top:15px}
+.outcome strong{font-size:21px;display:block;margin:9px 0}
+.outcome p{font-size:13px;color:var(--muted);margin:0}
+.approve{padding:23px;border:1px solid #637a64;border-radius:13px;background:#1b2d25;margin-top:16px}
+.approve label{display:flex;gap:11px;align-items:start;font-size:13px;color:#e2ece2;cursor:pointer}
+.approve input[type=checkbox]{accent-color:var(--lime);margin-top:4px;transform:scale(1.1)}
+.approve .btn{margin-top:14px}
+.auditnote{margin-top:20px;font-size:12px;color:var(--muted)}
+.hidden{display:none!important}
+footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+@media(max-width:860px){.hero{grid-template-columns:1fr;padding-top:45px}.workbench{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.container{width:calc(100% - 26px)}nav{height:62px}.navlinks a:first-child{display:none}.hero h1{font-size:46px}.grid2,.actions{grid-template-columns:1fr}.panel{padding:19px}.preview{padding:19px}.stats{gap:9px}.stat{padding:16px}}
+</style>
+</head>
+<body>
+<header class="header"><nav class="container">
+  <a href="/" class="brand" aria-label="DataReady Live"><span class="mark">D</span>DataReady</a>
+  <div class="navlinks"><a href="#upload">Analyze data</a><a href="#results">Results</a><a href="https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates" target="_blank" rel="noopener noreferrer">Source code ↗</a></div>
+</nav></header>
+<main>
+  <div class="container hero">
+    <div>
+      <div class="kicker">NVIDIA NEMOTRON · NEBIUS TOKEN FACTORY · LIVE</div>
+      <h1>Your data.<br><span>Real answers.</span><br>Verified repairs.</h1>
+      <p class="lead">Upload a real dataset. DataReady inspects its quality, asks NVIDIA Nemotron for repair strategies, independently tests each one, and lets you approve only an evidence-backed result.</p>
+      <div class="hero-mini"><span>✓ Original preserved</span><span>✓ No raw rows to AI</span><span>✓ Independent re-audits</span></div>
+    </div>
+    <div class="preview">
+      <div class="previewhead"><span>LIVE PRODUCT WORKFLOW</span><span>DATAREADY CORE</span></div>
+      <div class="previewrow"><span class="num">01</span><span>Upload your CSV, JSON, or Excel data</span></div>
+      <div class="previewrow"><span class="num">02</span><span>Run preflight, quality, and privacy checks</span></div>
+      <div class="previewrow"><span class="num">03</span><span>NVIDIA proposes from minimized evidence</span></div>
+      <div class="previewrow"><span class="num">04</span><span>Policy checks and isolated repair trials</span></div>
+      <div class="previewrow"><span class="num">05</span><span>Compare, approve, download a separate copy</span></div>
+      <div class="endnote">AI proposes. Evidence decides. You authorize.</div>
+    </div>
+  </div>
+  <section id="upload" class="main container">
+    <div class="flexsection">
+      <div><div class="kicker">01 / DATA INPUT</div><h2>Analyze your own dataset.</h2></div>
+      <div class="section-caption">Real file processing. No fixed results or synthetic replay. CSV, flat JSON, and first-sheet XLSX supported, up to 10 MB.</div>
+    </div>
+    <div class="workbench">
+      <div class="panel">
+        <h3>Select your dataset</h3>
+        <label for="file-input" class="drop" id="dropzone">
+          <span class="uploadmark" aria-hidden="true">↑</span>
+          <strong>Drop a file here or browse</strong>
+          <small>CSV · JSON · XLSX · maximum 10 MB</small>
+          <em>Choose a data file ↗</em>
+        </label>
+        <input type="file" id="file-input" accept=".csv,.json,.xlsx" aria-label="Dataset file">
+        <div class="file-selected" id="selected">No file selected</div>
+        <div class="access">
+          <label for="access-code">Competition demo access code <span style="color:var(--muted);font-weight:400">(for live NVIDIA analysis)</span></label>
+          <input type="password" id="access-code" autocomplete="off" placeholder="Provided in the judging instructions">
+          <p>A public audit requires no code. Live NVIDIA inference and repaired-file export require the demo access code. It is not your Nebius API key.</p>
+        </div>
+        <div class="actions">
+          <button class="btn secondary" id="audit-btn" type="button" disabled>Run safety & quality audit</button>
+          <button class="btn primary" id="analyze-btn" type="button" disabled>Run live NVIDIA analysis ↗</button>
+        </div>
+        <div id="feedback" role="status" aria-live="polite"></div>
+        <button id="sample-btn" type="button" class="ghost">Load a sample dataset to try it</button>
+      </div>
+      <aside class="panel">
+        <h3>Why DataReady?</h3>
+        <div class="aside-list">
+          <div class="asideitem"><div class="bullet">1</div><div><strong>Real input, not a canned response</strong><p>Every upload gets its own audit, source fingerprint, and measured candidate results.</p></div></div>
+          <div class="asideitem"><div class="bullet">2</div><div><strong>Privacy-aware reasoning</strong><p>Only minimized audit evidence reaches the NVIDIA model. Critical risks prevent automatic planning.</p></div></div>
+          <div class="asideitem"><div class="bullet">3</div><div><strong>Verification over persuasion</strong><p>Model confidence does not count as an improvement. Each permitted strategy runs on its own temporary copy.</p></div></div>
+          <div class="asideitem"><div class="bullet">4</div><div><strong>Human-controlled export</strong><p>A recommended repair can be exported only after your explicit approval and a fresh revalidation.</p></div></div>
+        </div>
+        <div class="smallprint">This competition build accepts tabular files—not every possible data type. Files are processed in temporary server directories and deleted after the request. Avoid uploading sensitive or confidential records to this public demo.</div>
+      </aside>
+    </div>
+
+    <div id="results" aria-live="polite">
+      <div class="resulttop"><div><div class="kicker">02 / INDEPENDENT EVIDENCE</div><h2>Dataset analysis</h2></div><span id="mode-chip" class="mode">LIVE AUDIT</span></div>
+      <div class="stats">
+        <article class="stat"><div class="name">Original quality</div><strong id="quality">—</strong><small>Deterministic score</small></article>
+        <article class="stat"><div class="name">Readiness status</div><strong id="readiness">—</strong><small>Policy-aware result</small></article>
+        <article class="stat"><div class="name">Analyzed rows</div><strong id="rows">—</strong><small>Input data records</small></article>
+        <article class="stat highlight"><div class="name">AI candidates</div><strong id="count">—</strong><small>Actual model proposals</small></article>
+      </div>
+      <div class="panel" style="margin-bottom:16px">
+        <div class="sectionlabel">Detected findings</div>
+        <table aria-label="Dataset quality findings">
+          <thead><tr><th>Finding</th><th>Column</th><th>Severity</th><th>Count</th></tr></thead>
+          <tbody id="findings"></tbody>
+        </table>
+        <p class="auditnote" id="auditnote"></p>
+      </div>
+      <div id="candidate-section" class="hidden">
+        <div class="flexsection" style="margin-top:32px"><div><div class="kicker">03 / COMPETING REPAIRS</div><h2>Which strategy earns trust?</h2></div><p class="section-caption">Actual NVIDIA-generated strategies, fresh isolated trials, and measured evidence.</p></div>
+        <div id="candidate-cards" class="grid2"></div>
+      </div>
+      <div class="outcome">
+        <div class="sectionlabel">Final independent decision</div>
+        <strong id="decision">—</strong>
+        <p id="decision-message">Awaiting evaluation.</p>
+        <p id="remaining" style="margin-top:9px"></p>
+      </div>
+      <div class="approve hidden" id="approval-panel">
+        <div class="kicker">04 / HUMAN AUTHORIZATION</div>
+        <h3 style="margin:7px 0 10px">Approve a separate repaired CSV</h3>
+        <label><input type="checkbox" id="approve-check"> I reviewed the evidence and authorize generating a separate repaired copy of my uploaded data. My original file must remain unchanged.</label>
+        <button class="btn primary" id="download-btn" type="button" disabled>Download verified repaired CSV ↓</button>
+        <p class="auditnote">Repairs are revalidated against the original upload. A recommendation is not automatic production permission. CSV cells may contain spreadsheet formulas; inspect files before opening them in spreadsheet software.</p>
+      </div>
+      <div style="display:flex;gap:19px;flex-wrap:wrap;margin-top:19px"><button id="json-btn" class="ghost" type="button">Download audit & evaluation evidence JSON ↓</button><button id="restart-btn" class="ghost" type="button">Analyze another file ↺</button></div>
+    </div>
+  </section>
+</main>
+<footer class="container"><span>DataReady Autopilot · Live Nebius / NVIDIA competition prototype</span><span>Source preservation · Conservative policy · Independent verification</span></footer>
+<script>
+(function(){
+"use strict";
+var selected=null, latest=null;
+var uploadInput=document.getElementById("file-input"), drop=document.getElementById("dropzone");
+var code=document.getElementById("access-code"), feedback=document.getElementById("feedback");
+var auditBtn=document.getElementById("audit-btn"), analyzeBtn=document.getElementById("analyze-btn"), downloadBtn=document.getElementById("download-btn");
+var results=document.getElementById("results"), check=document.getElementById("approve-check");
+var MAX=10*1024*1024;
+function el(name,cls,text){var x=document.createElement(name);if(cls)x.className=cls;if(text!==undefined)x.textContent=String(text);return x;}
+function text(id,value){document.getElementById(id).textContent=String(value);}
+function status(message,isError){feedback.className=isError?"error":"";feedback.textContent=message;}
+function setFile(file){
+  selected=file||null;latest=null;
+  auditBtn.disabled=!selected;analyzeBtn.disabled=!selected;
+  results.style.display="none";check.checked=false;downloadBtn.disabled=true;
+  if(!selected){text("selected","No file selected");return;}
+  text("selected",selected.name+" · "+(selected.size/1024).toFixed(1)+" KB");
+  status(selected.size>MAX?"File exceeds the 10 MB limit.": "Ready to analyze.",selected.size>MAX);
+}
+uploadInput.addEventListener("change",function(){setFile(uploadInput.files[0]);});
+["dragenter","dragover"].forEach(function(event){drop.addEventListener(event,function(e){e.preventDefault();drop.classList.add("drag");});});
+["dragleave","drop"].forEach(function(event){drop.addEventListener(event,function(e){e.preventDefault();drop.classList.remove("drag");});});
+drop.addEventListener("drop",function(e){if(e.dataTransfer.files.length)setFile(e.dataTransfer.files[0]);});
+document.getElementById("sample-btn").addEventListener("click",function(){
+  var data="item,category\nA,tools\nA,tools\nB,\nC,parts\n";
+  setFile(new File([data],"example-inventory.csv",{type:"text/csv"}));
+  status("Sample loaded as a real file. Run either audit or live NVIDIA analysis.");
+});
+function setBusy(busy){
+  auditBtn.disabled=busy||!selected;analyzeBtn.disabled=busy||!selected;
+  document.getElementById("sample-btn").disabled=busy;
+  downloadBtn.disabled=busy||!latest||!latest.approval_token||!check.checked;
+}
+async function send(url,form,needsCode){
+  var headers={};
+  if(needsCode)headers["X-DataReady-Demo-Token"]=code.value.trim();
+  var response=await fetch(url,{method:"POST",headers:headers,body:form,cache:"no-store"});
+  if(!response.ok){
+    var message="HTTP "+response.status;
+    try{var err=await response.json();if(typeof err.detail==="string")message=err.detail;}catch(_){}
+    throw new Error(message);
+  }
+  return response;
+}
+function renderAudit(issues){
+  var tbody=document.getElementById("findings");tbody.replaceChildren();
+  if(!issues.length){
+    var tr=el("tr");var td=el("td","", "No audited findings");td.colSpan=4;tr.appendChild(td);tbody.appendChild(tr);return;
+  }
+  issues.forEach(function(issue){
+    var tr=el("tr");
+    tr.appendChild(el("td","",issue.code.replaceAll("_"," ")));
+    tr.appendChild(el("td","",issue.column||"All rows"));
+    tr.appendChild(el("td","issue-"+issue.severity.toLowerCase(),issue.severity));
+    tr.appendChild(el("td","",issue.count));
+    tbody.appendChild(tr);
+  });
+}
+function candidateCard(item,win){
+  var card=el("article","candidate"+(win?" good":""));
+  var top=el("div","cardtop");
+  top.appendChild(el("strong","",item.candidate_id));
+  top.appendChild(el("span","chip"+(win?" good":""),win?"RECOMMENDED":item.disposition.replaceAll("_"," ")));
+  card.appendChild(top);
+  card.appendChild(el("div","actions-label",item.actions.map(function(x){return x.action.replaceAll("_"," ");}).join(" + ")));
+  var after=item.audit_after;
+  card.appendChild(el("div","score",after?after.quality_score+"/100":"Not trialed"));
+  card.appendChild(el("div","auditnote",after?("Rows: "+after.row_count+" · Duplicate rows: "+after.duplicate_row_count):item.policy_status));
+  card.appendChild(el("p","",item.reason));
+  if(after&&after.issues.length)card.appendChild(el("p","",after.issues.map(function(i){return i.code+" ("+i.count+")";}).join(" · ")+" remains or was detected."));
+  return card;
+}
+function render(data){
+  latest=data;results.style.display="block";
+  var before=data.original_audit;
+  text("quality",before.quality_score+"/100");text("readiness",before.status);
+  text("rows",before.row_count);text("count",data.candidate_count||0);
+  text("auditnote","SHA-256 source: "+before.fingerprint_sha256+" · No production changes.");
+  renderAudit(before.issues);
+  var live=data.model_invoked===true;
+  text("mode-chip",live?"LIVE NVIDIA NEMOTRON":"LIVE DETERMINISTIC AUDIT");
+  var area=document.getElementById("candidate-section"),cards=document.getElementById("candidate-cards");cards.replaceChildren();
+  var rec=data.recommendation||null;
+  if(live&&data.candidates.length){
+    area.classList.remove("hidden");
+    data.candidates.forEach(function(item){cards.appendChild(candidateCard(item,!!rec&&item.candidate_id===rec.candidate_id));});
+  }else area.classList.add("hidden");
+  text("decision",rec?rec.status.replaceAll("_"," "):"AUDIT COMPLETE");
+  text("decision-message",rec?rec.message:"The uploaded data has been audited. Enter a demo access code and run live NVIDIA analysis to evaluate AI-generated repairs.");
+  var winner=(data.candidates||[]).find(function(c){return rec&&c.candidate_id===rec.candidate_id;});
+  text("remaining",winner&&winner.audit_after&&winner.audit_after.issues.length?
+    "Remaining findings after the recommended trial: "+winner.audit_after.issues.map(function(i){return i.code+" ("+i.count+")";}).join(", ")+".":
+    (winner?"No remaining audit findings in this isolated trial; business correctness is not guaranteed.":""));
+  document.getElementById("approval-panel").classList.toggle("hidden",!data.approval_token);
+  check.checked=false;downloadBtn.disabled=true;
+  results.scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function analyze(live){
+  if(!selected)return;
+  if(selected.size>MAX){status("This file is too large for the demo.",true);return;}
+  if(live&&!code.value.trim()){status("Enter the competition demo access code for NVIDIA inference.",true);return;}
+  var form=new FormData();form.append("file",selected,selected.name);
+  setBusy(true);
+  status(live?"Running live NVIDIA Nemotron, then independently evaluating candidates…":"Inspecting your actual uploaded dataset…");
+  try{
+    var response=await send(live?"/api/analyze":"/api/audit",form,live);
+    var data=await response.json();
+    render(data);
+    status(live?(data.model_invoked?"Live NVIDIA analysis completed.":"Safe audit completed; no AI call was needed or permitted."):"Fresh audit completed.");
+  }catch(error){status(error.message,true);}
+  finally{setBusy(false);}
+}
+auditBtn.addEventListener("click",function(){analyze(false);});
+analyzeBtn.addEventListener("click",function(){analyze(true);});
+check.addEventListener("change",function(){downloadBtn.disabled=!check.checked||!latest||!latest.approval_token;});
+downloadBtn.addEventListener("click",async function(){
+  if(!latest||!latest.approval_token||!check.checked||!selected)return;
+  setBusy(true);status("Rechecking source, policy, and trial evidence before creating your repaired copy…");
+  try{
+    var form=new FormData();form.append("file",selected,selected.name);
+    form.append("approval_token",latest.approval_token);form.append("consent","approve");
+    var response=await send("/api/export",form,true);
+    var blob=await response.blob(),url=URL.createObjectURL(blob);
+    var link=document.createElement("a");link.href=url;link.download="dataready-repaired.csv";
+    document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    status("Your separately repaired CSV was downloaded. Your original file remains unchanged.");
+  }catch(error){status(error.message,true);}
+  finally{setBusy(false);}
+});
+document.getElementById("json-btn").addEventListener("click",function(){
+  if(!latest)return;
+  var safe=JSON.parse(JSON.stringify(latest));delete safe.approval_token;
+  var blob=new Blob([JSON.stringify(safe,null,2)],{type:"application/json"});
+  var url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="dataready-evidence.json";document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},1000);
+});
+document.getElementById("restart-btn").addEventListener("click",function(){
+  latest=null;results.style.display="none";window.scrollTo({top:document.getElementById("upload").offsetTop-25,behavior:"smooth"});
+});
+}());
+</script>
+</body>
+</html>

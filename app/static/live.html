@@ -150,7 +150,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
         <input type="file" id="file-input" accept=".csv,.json,.xlsx" aria-label="Dataset file">
         <div class="file-selected" id="selected">No file selected</div>
         <div class="access">
-          <p><strong style="color:var(--lime)">No signup or access code.</strong> Run your audit free. Live NVIDIA analysis is limited to two requests per browser per day, subject to an overall daily allowance. DataReady keeps provider credentials entirely on the server.</p>
+          <p><strong style="color:var(--lime)">No signup or access code.</strong> Run your audit free. Live NVIDIA analysis has automatic fair-use limits (up to five analyses per browser session per day) and a shared daily allowance. DataReady keeps provider credentials entirely on the server.</p>
         </div>
         <div class="actions">
           <button class="btn secondary" id="audit-btn" type="button" disabled>Run safety & quality audit</button>
@@ -308,7 +308,7 @@ function render(data){
     data.candidates.forEach(function(item){cards.appendChild(candidateCard(item,!!rec&&item.candidate_id===rec.candidate_id));});
   }else area.classList.add("hidden");
   text("decision",rec?rec.status.replaceAll("_"," "):"AUDIT COMPLETE");
-  text("decision-message",rec?rec.message:"The uploaded data has been audited. Enter a demo access code and run live NVIDIA analysis to evaluate AI-generated repairs.");
+  text("decision-message",rec?rec.message:"The uploaded data has been audited. Select Run live NVIDIA analysis to evaluate AI-generated repairs. No access code is needed.");
   var winner=(data.candidates||[]).find(function(c){return rec&&c.candidate_id===rec.candidate_id;});
   text("remaining",winner&&winner.audit_after&&winner.audit_after.issues.length?
     "Remaining findings after the recommended trial: "+winner.audit_after.issues.map(function(i){return i.code+" ("+i.count+")";}).join(", ")+".":

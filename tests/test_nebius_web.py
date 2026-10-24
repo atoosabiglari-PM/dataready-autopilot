@@ -230,5 +230,5 @@ def test_existing_gemini_and_health_routes_untouched():
     assert response.json()["status"] == "healthy"
     # The existing Gemini demo route remains defined, without making a model call.
     assert any(
-        route.path == "/demo/repair" for route in web.app.routes
+        getattr(route, "path", None) == "/demo/repair" for route in web.app.routes
     )

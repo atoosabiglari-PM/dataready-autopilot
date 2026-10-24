@@ -150,9 +150,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
         <input type="file" id="file-input" accept=".csv,.json,.xlsx" aria-label="Dataset file">
         <div class="file-selected" id="selected">No file selected</div>
         <div class="access">
-          <label for="access-code">Competition demo access code <span style="color:var(--muted);font-weight:400">(for live NVIDIA analysis)</span></label>
-          <input type="password" id="access-code" autocomplete="off" placeholder="Provided in the judging instructions">
-          <p>A public audit requires no code. Live NVIDIA inference and repaired-file export require a separate demo code supplied by the application owner. <strong>Never enter your Nebius API key here.</strong></p>
+          <p><strong style="color:var(--lime)">No signup or access code.</strong> Run your audit free. Live NVIDIA analysis is limited to two requests per browser per day, subject to an overall daily allowance. DataReady keeps provider credentials entirely on the server.</p>
         </div>
         <div class="actions">
           <button class="btn secondary" id="audit-btn" type="button" disabled>Run safety & quality audit</button>
@@ -164,7 +162,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
       <aside class="panel">
         <h3>Why DataReady?</h3>
         <div class="aside-list">
-          <div class="asideitem"><div class="bullet">1</div><div><strong>Real input, not a canned response</strong><p>Every upload gets its own audit, source fingerprint, and measured candidate results.</p></div></div>
+          <div class="asideitem"><div class="bullet">1</div><div><strong>Real input, not a canned response</strong><p>Every upload gets its own audit, source fingerprint, and measured candidate results. No customer access codes.</p></div></div>
           <div class="asideitem"><div class="bullet">2</div><div><strong>Privacy-aware reasoning</strong><p>Only minimized audit evidence reaches the NVIDIA model. Critical risks prevent automatic planning.</p></div></div>
           <div class="asideitem"><div class="bullet">3</div><div><strong>Verification over persuasion</strong><p>Model confidence does not count as an improvement. Each permitted strategy runs on its own temporary copy.</p></div></div>
           <div class="asideitem"><div class="bullet">4</div><div><strong>Human-controlled export</strong><p>A recommended repair can be exported only after your explicit approval and a fresh revalidation.</p></div></div>
@@ -220,7 +218,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
 "use strict";
 var selected=null, latest=null;
 var uploadInput=document.getElementById("file-input"), drop=document.getElementById("dropzone");
-var code=document.getElementById("access-code"), feedback=document.getElementById("feedback");
+var feedback=document.getElementById("feedback");
 var auditBtn=document.getElementById("audit-btn"), analyzeBtn=document.getElementById("analyze-btn"), downloadBtn=document.getElementById("download-btn");
 var results=document.getElementById("results"), check=document.getElementById("approve-check");
 var MAX=10*1024*1024;
@@ -249,10 +247,10 @@ function setBusy(busy){
   document.getElementById("sample-btn").disabled=busy;
   downloadBtn.disabled=busy||!latest||!latest.approval_token||!check.checked;
 }
-async function send(url,form,needsCode){
-  var headers={};
-  if(needsCode)headers["X-DataReady-Demo-Token"]=code.value.trim();
-  var response=await fetch(url,{method:"POST",headers:headers,body:form,cache:"no-store"});
+async function send(url,form){
+  var response=await fetch(url,{
+    method:"POST",body:form,cache:"no-store",credentials:"same-origin"
+  });
   if(!response.ok){
     var message="HTTP "+response.status;
     try{var err=await response.json();if(typeof err.detail==="string")message=err.detail;}catch(_){}
@@ -322,12 +320,11 @@ function render(data){
 async function analyze(live){
   if(!selected)return;
   if(selected.size>MAX){status("This file is too large for the demo.",true);return;}
-  if(live&&!code.value.trim()){status("Enter the competition demo access code for NVIDIA inference.",true);return;}
   var form=new FormData();form.append("file",selected,selected.name);
   setBusy(true);
   status(live?"Running live NVIDIA Nemotron, then independently evaluating candidates…":"Inspecting your actual uploaded dataset…");
   try{
-    var response=await send(live?"/api/analyze":"/api/audit",form,live);
+    var response=await send(live?"/api/analyze":"/api/audit",form);
     var data=await response.json();
     render(data);
     status(live?(data.model_invoked?"Live NVIDIA analysis completed.":"Safe audit completed; no AI call was needed or permitted."):"Fresh audit completed.");
@@ -343,7 +340,7 @@ downloadBtn.addEventListener("click",async function(){
   try{
     var form=new FormData();form.append("file",selected,selected.name);
     form.append("approval_token",latest.approval_token);form.append("consent","approve");
-    var response=await send("/api/export",form,true);
+    var response=await send("/api/export",form);
     var blob=await response.blob(),url=URL.createObjectURL(blob);
     var link=document.createElement("a");link.href=url;link.download="dataready-repaired.csv";
     document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);

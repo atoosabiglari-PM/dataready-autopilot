@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from pydantic import ValidationError
@@ -36,12 +36,16 @@ from app.services.user_import import (
     ImportDiagnostics,
     receive_customer_dataset,
 )
+from app.services.public_quota import (
+    PublicQuotaExceeded,
+    PublicQuotaUnavailable,
+    reserve_public_inference,
+)
 from app.tools.audit import AuditReport, audit_csv
 from app.tools.fingerprint import calculate_sha256
 from app.tools.preflight import MAX_FILE_SIZE_BYTES
 
-ACCESS_ENV = "DATAREADY_DEMO_ACCESS_TOKEN"
-ACCESS_HEADER = "X-DataReady-Demo-Token"
+SESSION_COOKIE = "dataready_guest_session"
 SIGNING_ENV = "DATAREADY_APPROVAL_SIGNING_KEY"
 TOKEN_LIFETIME_SECONDS = 15 * 60
 MAX_REQUEST_SIZE = MAX_FILE_SIZE_BYTES + (2 * 1024 * 1024)
@@ -82,23 +86,49 @@ async def reject_oversized_request(request, call_next):
     return await call_next(request)
 
 
-def _require_access(provided_token: str | None) -> None:
-    """Verify the non-Nebius judge demo access token before billed inference."""
-    expected = os.getenv(ACCESS_ENV, "")
-    if len(expected) < 32:
-        raise HTTPException(
-            status_code=503,
-            detail="Live NVIDIA access is not configured on this server.",
-        )
-    if not provided_token or not hmac.compare_digest(provided_token, expected):
-        raise HTTPException(
-            status_code=401, detail="A valid competition demo access code is required."
-        )
-
-
 def _signing_key() -> bytes:
     value = os.getenv(SIGNING_ENV, "")
-    return value.encode("utf-8") if len(value) >= 32 else _EPHEMERAL_SIGNING_KEY
+    if len(value) >= 32:
+        return value.encode("utf-8")
+    if os.getenv("K_SERVICE"):
+        raise HTTPException(
+            status_code=503,
+            detail="The server's secure session signing key is not configured.",
+        )
+    return _EPHEMERAL_SIGNING_KEY
+
+
+def _new_guest_session() -> str:
+    """Issue a signed anonymous browser session, not a customer-entered code."""
+    nonce = secrets.token_urlsafe(24)
+    signature = hmac.new(
+        _signing_key(), ("session:" + nonce).encode("ascii"), hashlib.sha256
+    ).hexdigest()
+    return nonce + "." + signature
+
+
+def _verified_guest(cookie: str | None) -> str | None:
+    if not cookie or len(cookie) > 150 or "." not in cookie:
+        return None
+    nonce, signature = cookie.rsplit(".", 1)
+    if len(nonce) < 24 or len(signature) != 64:
+        return None
+    expected = hmac.new(
+        _signing_key(), ("session:" + nonce).encode("ascii"), hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(signature, expected):
+        return None
+    return nonce
+
+
+def _require_guest(request: Request) -> str:
+    guest = _verified_guest(request.cookies.get(SESSION_COOKIE))
+    if guest is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Open DataReady in your browser before starting live NVIDIA analysis.",
+        )
+    return guest
 
 
 def _encode_token(candidate: RepairCandidate, source_hash: str) -> str:
@@ -244,14 +274,25 @@ def _evaluate_uploaded_data(source: Path, audit_before: AuditReport) -> dict[str
 
 
 @app.get("/")
-def homepage() -> FileResponse:
+def homepage(request: Request) -> FileResponse:
     if not HTML.is_file():
         raise HTTPException(status_code=503, detail="DataReady interface is unavailable.")
-    return FileResponse(
+    response = FileResponse(
         HTML,
         media_type="text/html",
         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
     )
+    if _verified_guest(request.cookies.get(SESSION_COOKIE)) is None:
+        response.set_cookie(
+            key=SESSION_COOKIE,
+            value=_new_guest_session(),
+            max_age=86400,
+            path="/",
+            secure=bool(os.getenv("K_SERVICE")),
+            httponly=True,
+            samesite="lax",
+        )
+    return response
 
 
 @app.get("/health")
@@ -283,11 +324,10 @@ async def audit_upload(file: UploadFile = File(...)) -> dict[str, object]:
 
 @app.post("/api/analyze")
 async def analyze_upload(
+    request: Request,
     file: UploadFile = File(...),
-    demo_token: str | None = Header(default=None, alias=ACCESS_HEADER),
 ) -> dict[str, object]:
-    """Live NVIDIA analysis of the uploaded dataset, never predefined test data."""
-    _require_access(demo_token)
+    """Live NVIDIA analysis with server-side quotas, not customer access codes."""
     try:
         with TemporaryDirectory(prefix="dataready-upload-") as temporary:
             import_diagnostics = ImportDiagnostics()
@@ -364,6 +404,14 @@ async def analyze_upload(
                     "production_changes_applied": False,
                 }
 
+            guest = _require_guest(request)
+            try:
+                await run_in_threadpool(reserve_public_inference, guest)
+            except PublicQuotaExceeded as exc:
+                raise HTTPException(status_code=429, detail=str(exc)) from None
+            except PublicQuotaUnavailable as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from None
+
             result = await run_in_threadpool(
                 _evaluate_uploaded_data, source, before
             )
@@ -417,10 +465,8 @@ async def export_approved_copy(
     file: UploadFile = File(...),
     approval_token: str = Form(...),
     consent: str = Form(...),
-    demo_token: str | None = Header(default=None, alias=ACCESS_HEADER),
 ) -> Response:
-    """Never write to original data; explicit user approval creates a new CSV."""
-    _require_access(demo_token)
+    """No customer codes; signed approval and fresh policy checks gate export."""
     if consent != "approve":
         raise HTTPException(
             status_code=403, detail="Explicit customer approval is required."

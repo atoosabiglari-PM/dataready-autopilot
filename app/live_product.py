@@ -1,7 +1,7 @@
 """Live DataReady customer application.
 
 Uploads are real user-supplied tabular datasets; no fixed demo data is used.
-Nemotron inference requires a separate demo credential. The model never sees
+Nemotron inference is budgeted entirely on the server, without customer codes. The model never sees
 raw rows; policy, isolated trials, and re-audit remain independent controls.
 """
 from __future__ import annotations

@@ -12,18 +12,23 @@ from app.core.policy import ProposedRepair, RepairAction, RepairPlan
 from app.services.nebius_candidates import NebiusCandidateError
 
 client = TestClient(live_product.app)
-ACCESS = "competition_guest_code_sufficiently_long_1234567890"
-HEADERS = {live_product.ACCESS_HEADER: ACCESS}
+# Customer interaction requires no access code.
+HEADERS = {}
 CSV = b"item,category\nA,tools\nA,tools\nB,\nC,parts\n"
 
 
 @pytest.fixture
 def authorized(monkeypatch):
-    monkeypatch.setenv(live_product.ACCESS_ENV, ACCESS)
+    monkeypatch.delenv("K_SERVICE", raising=False)
+    monkeypatch.delenv("DATAREADY_PUBLIC_INFERENCE_ENABLED", raising=False)
     monkeypatch.setenv(
         live_product.SIGNING_ENV,
         "independent_approval_signing_secret_9876543210",
     )
+    client.cookies.clear()
+    response = client.get("/")
+    assert response.status_code == 200
+    assert live_product.SESSION_COOKIE in client.cookies
     return HEADERS
 
 
@@ -80,7 +85,6 @@ def test_customer_page_is_actual_upload_application():
 
 
 def test_arbitrary_csv_audit_needs_no_model_token(monkeypatch):
-    monkeypatch.delenv(live_product.ACCESS_ENV, raising=False)
     monkeypatch.setattr(live_product, "propose_nebius_candidates", forbidden)
     response = client.post("/api/audit", files=upload())
     assert response.status_code == 200, response.text
@@ -291,17 +295,20 @@ def test_upload_size_limited():
     assert response.status_code in {413, 422}
 
 
-def test_unauthenticated_inference_never_calls_model(monkeypatch, authorized):
+def test_inference_requires_a_server_issued_browser_session(monkeypatch):
+    monkeypatch.setattr(live_product, "propose_nebius_candidates", forbidden)
+    fresh = TestClient(live_product.app)
+    response = fresh.post("/api/analyze", files=upload())
+    assert response.status_code == 403
+
+
+def test_hosted_inference_disabled_until_quota_configured(monkeypatch, authorized):
+    monkeypatch.setenv("K_SERVICE", "dataready-live")
+    monkeypatch.delenv("DATAREADY_PUBLIC_INFERENCE_ENABLED", raising=False)
     monkeypatch.setattr(live_product, "propose_nebius_candidates", forbidden)
     response = client.post("/api/analyze", files=upload())
-    assert response.status_code == 401
-
-
-def test_model_route_disabled_without_server_access_code(monkeypatch):
-    monkeypatch.delenv(live_product.ACCESS_ENV, raising=False)
-    monkeypatch.setattr(live_product, "propose_nebius_candidates", forbidden)
-    response = client.post("/api/analyze", files=upload(), headers=HEADERS)
     assert response.status_code == 503
+    assert "SENSITIVE" not in response.text
 
 
 def test_ready_input_skips_billable_model(monkeypatch, authorized):
@@ -349,7 +356,7 @@ def test_provider_error_does_not_leak_account_details(monkeypatch, authorized):
     response = client.post("/api/analyze", files=upload(), headers=authorized)
     assert response.status_code == 502
     assert "SENSITIVE_PROVIDER_DETAIL" not in response.text
-    assert ACCESS not in response.text
+    assert "NEBIUS_API_KEY" not in response.text
 
 
 def run_and_get_token(monkeypatch, authorized):

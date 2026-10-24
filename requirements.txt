@@ -6,6 +6,7 @@ python-multipart>=0.0.20,<1.0
 
 # Data analysis and validation
 pandas>=2.3,<3.0
+openpyxl>=3.1,<4.0  # Safe bounded XLSX first-sheet import
 
 # Google agent and cloud services
 google-adk>=2.6,<3.0

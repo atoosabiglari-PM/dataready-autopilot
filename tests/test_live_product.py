@@ -82,6 +82,8 @@ def test_customer_page_is_actual_upload_application():
     assert 'id="file-input"' in response.text
     assert "Run live NVIDIA analysis" in response.text
     assert "PUBLIC REPLAY MODE" not in response.text
+    assert 'id="access-code"' not in response.text
+    assert "X-DataReady-Demo-Token" not in response.text
 
 
 def test_arbitrary_csv_audit_needs_no_model_token(monkeypatch):
@@ -300,6 +302,35 @@ def test_inference_requires_a_server_issued_browser_session(monkeypatch):
     fresh = TestClient(live_product.app)
     response = fresh.post("/api/analyze", files=upload())
     assert response.status_code == 403
+
+
+def test_spending_limit_is_reported_without_calling_nebius(monkeypatch, authorized):
+    def exhausted(_guest):
+        raise live_product.PublicQuotaExceeded(
+            "This browser has reached today's NVIDIA demo allowance."
+        )
+
+    monkeypatch.setattr(live_product, "reserve_public_inference", exhausted)
+    monkeypatch.setattr(live_product, "propose_nebius_candidates", forbidden)
+    response = client.post("/api/analyze", files=upload())
+    assert response.status_code == 429
+    assert "allowance" in response.json()["detail"]
+
+
+def test_live_nvidia_reserves_one_server_quota_without_customer_code(
+    monkeypatch, authorized
+):
+    reserved = []
+    monkeypatch.setattr(
+        live_product,
+        "reserve_public_inference",
+        lambda guest: reserved.append(guest),
+    )
+    monkeypatch.setattr(live_product, "propose_nebius_candidates", make_batch)
+    response = client.post("/api/analyze", files=upload())
+    assert response.status_code == 200, response.text
+    assert len(reserved) == 1
+    assert response.json()["recommendation"]["candidate_id"] == "dedupe"
 
 
 def test_hosted_inference_disabled_until_quota_configured(monkeypatch, authorized):

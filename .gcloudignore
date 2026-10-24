@@ -1,0 +1,25 @@
+# Files excluded from gcloud run deploy --source .
+# Import the repository's ignored local files (including secrets).
+#!include:.gitignore
+
+.git/
+.github/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+credentials.json
+service-account*.json
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+*.pyc
+*.log
+tests/
+docs/
+uploads/
+outputs/
+quarantine/
+demo_output/

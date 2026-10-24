@@ -167,16 +167,98 @@ def test_xlsx_first_sheet_is_analyzed():
     assert audit["duplicate_row_count"] == 1
 
 
-def test_excel_formulas_rejected():
+def test_excel_without_saved_formula_values_audits_but_requires_recalculation(
+    monkeypatch, authorized
+):
     openpyxl = pytest.importorskip("openpyxl")
     wb = openpyxl.Workbook()
     sheet = wb.active
-    sheet.append(["value"])
-    sheet.append(["=2+2"])
+    sheet.append(["item", "quantity"])
+    sheet.append(["A", "=2+2"])
+    sheet.append(["A", "=2+2"])
     buffer = BytesIO()
     wb.save(buffer)
-    response = client.post("/api/audit", files=upload(buffer.getvalue(), "formula.xlsx"))
+
+    def forbid_model(*args, **kwargs):
+        raise AssertionError("Missing formula caches must not reach Nemotron.")
+
+    monkeypatch.setattr(live_product, "propose_nebius_candidates", forbid_model)
+    audit = client.post("/api/audit", files=upload(buffer.getvalue(), "formula.xlsx"))
+    assert audit.status_code == 200, audit.text
+    body = audit.json()
+    assert body["original_audit"]["row_count"] == 2
+    assert body["original_audit"]["duplicate_row_count"] == 1
+    assert len(body["import_warnings"]) == 1
+    assert "no saved calculated value" in body["import_warnings"][0]
+
+    response = client.post(
+        "/api/analyze",
+        files=upload(buffer.getvalue(), "formula.xlsx"),
+        headers=authorized,
+    )
+    assert response.status_code == 200, response.text
+    report = response.json()
+    assert report["model_invoked"] is False
+    assert report["recommendation"]["status"] == "REQUIRES_REVIEW"
+    assert report["approval_token"] is None
+
+
+def test_excel_saved_formula_values_are_analyzed_without_formula_execution():
+    """Simulate an Excel-saved cached result, not an openpyxl-calculated value."""
+    from zipfile import ZipFile
+
+    openpyxl = pytest.importorskip("openpyxl")
+    wb = openpyxl.Workbook()
+    sheet = wb.active
+    sheet.append(["sku", "quantity"])
+    sheet.append(["A", "=2+2"])
+    sheet.append(["B", 4])
+    original = BytesIO()
+    wb.save(original)
+
+    patched = BytesIO()
+    with ZipFile(BytesIO(original.getvalue())) as source_archive:
+        with ZipFile(patched, "w") as target_archive:
+            for info in source_archive.infolist():
+                data = source_archive.read(info.filename)
+                if info.filename == "xl/worksheets/sheet1.xml":
+                    assert b"<f>2+2</f><v></v>" in data
+                    data = data.replace(
+                        b"<f>2+2</f><v></v>",
+                        b"<f>2+2</f><v>4</v>",
+                        1,
+                    )
+                target_archive.writestr(info, data)
+
+    response = client.post(
+        "/api/audit",
+        files=upload(patched.getvalue(), "cached-formula.xlsx"),
+    )
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["original_audit"]["status"] == "READY"
+    assert result["original_audit"]["row_count"] == 2
+    assert result["original_audit"]["duplicate_row_count"] == 0
+    assert len(result["import_warnings"]) == 1
+    assert "saved results" in result["import_warnings"][0]
+
+
+def test_missing_formula_results_cannot_be_exported(monkeypatch, authorized):
+    openpyxl = pytest.importorskip("openpyxl")
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["item", "qty"])
+    ws.append(["A", "=1+2"])
+    buffer = BytesIO()
+    wb.save(buffer)
+    response = client.post(
+        "/api/export",
+        files=upload(buffer.getvalue(), "missing-values.xlsx"),
+        data={"approval_token": "invalid", "consent": "approve"},
+        headers=authorized,
+    )
     assert response.status_code == 422
+    assert "formula results are missing" in response.json()["detail"]
 
 
 @pytest.mark.parametrize("name", ["payload.exe", "data.zip", "data.xls"])

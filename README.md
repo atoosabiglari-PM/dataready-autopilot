@@ -12,6 +12,30 @@ Gemini proposes constrained repairs from minimized audit evidence. Deterministic
 
 ---
 
+## NVIDIA Competition Showcase
+
+The [DataReady judge-facing showcase](docs/SHOWCASE_DEPLOYMENT.md) demonstrates
+two repair strategies first observed from **NVIDIA Nemotron through Nebius**,
+then independently replays deterministic policy checks, isolated repair trials,
+and audit evidence using a fixed synthetic dataset.
+
+- Public replay: `app.public_showcase:app` — **no billable model endpoints or credentials**.
+- Protected live NVIDIA workflow: `app.web:app` — access-controlled
+  `POST /demo/nebius-candidates`.
+- The public replay is explicitly labeled; it does not impersonate live inference.
+- Deployment instructions create a **separate Cloud Run service** so the existing
+  Gemini deployment stays untouched.
+
+### Local judge-facing preview
+
+```bash
+python -m uvicorn app.public_showcase:app --host 127.0.0.1 --port 8080
+```
+
+Visit `http://127.0.0.1:8080/showcase`.
+
+---
+
 ## Live Google Cloud Deployment
 
 **Google Cloud Run service**

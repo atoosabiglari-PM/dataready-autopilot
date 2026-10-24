@@ -7,6 +7,7 @@ raw rows; policy, isolated trials, and re-audit remain independent controls.
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -19,6 +20,7 @@ from tempfile import TemporaryDirectory
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
+from pydantic import ValidationError
 
 from app.core.candidates import CandidateBatch, RepairCandidate
 from app.core.policy import DatasetPolicy, RepairAction, validate_repair_plan
@@ -127,7 +129,7 @@ def _decode_token(token: str, source_hash: str) -> RepairCandidate:
         if candidate.repair_plan.source_fingerprint_sha256 != source_hash:
             raise ValueError("The approval does not match the uploaded dataset.")
         return candidate
-    except (KeyError, ValueError, TypeError) as error:
+    except (KeyError, ValueError, TypeError, binascii.Error, UnicodeError, ValidationError):
         raise HTTPException(
             status_code=403, detail="Invalid or expired approval token."
         ) from None

@@ -31,7 +31,11 @@ from app.services.nebius_candidates import (
     NebiusCandidateError,
     propose_nebius_candidates,
 )
-from app.services.user_import import CustomerUploadError, receive_customer_dataset
+from app.services.user_import import (
+    CustomerUploadError,
+    ImportDiagnostics,
+    receive_customer_dataset,
+)
 from app.tools.audit import AuditReport, audit_csv
 from app.tools.fingerprint import calculate_sha256
 from app.tools.preflight import MAX_FILE_SIZE_BYTES
@@ -260,12 +264,16 @@ async def audit_upload(file: UploadFile = File(...)) -> dict[str, object]:
     """Any supported tabular dataset can be inspected without a model call."""
     try:
         with TemporaryDirectory(prefix="dataready-upload-") as temporary:
-            source = await receive_customer_dataset(file, Path(temporary))
+            import_diagnostics = ImportDiagnostics()
+            source = await receive_customer_dataset(
+                file, Path(temporary), diagnostics=import_diagnostics
+            )
             before = await run_in_threadpool(_prepare_audit, source)
             return {
                 "mode": "LIVE_AUDIT",
                 "model_invoked": False,
                 "original_audit": _audit_public(before),
+                "import_warnings": import_diagnostics.warnings,
                 "source_preserved": True,
                 "production_changes_applied": False,
             }
@@ -282,14 +290,42 @@ async def analyze_upload(
     _require_access(demo_token)
     try:
         with TemporaryDirectory(prefix="dataready-upload-") as temporary:
-            source = await receive_customer_dataset(file, Path(temporary))
+            import_diagnostics = ImportDiagnostics()
+            source = await receive_customer_dataset(
+                file, Path(temporary), diagnostics=import_diagnostics
+            )
             before = await run_in_threadpool(_prepare_audit, source)
+
+            if import_diagnostics.uncached_formulas:
+                return {
+                    "mode": "LIVE_AUDIT",
+                    "model_invoked": False,
+                    "original_audit": _audit_public(before),
+                    "import_warnings": import_diagnostics.warnings,
+                    "candidate_count": 0,
+                    "candidates": [],
+                    "recommendation": {
+                        "status": "REQUIRES_REVIEW",
+                        "candidate_id": None,
+                        "shortlist": [],
+                        "message": (
+                            "This workbook has formula cells without saved results. "
+                            "The available rows were audited, but NVIDIA analysis "
+                            "and repaired export are disabled until the workbook "
+                            "has been recalculated and saved."
+                        ),
+                    },
+                    "approval_token": None,
+                    "source_preserved": True,
+                    "production_changes_applied": False,
+                }
 
             if before.status != "QUARANTINED":
                 return {
                     "mode": "LIVE_AUDIT",
                     "model_invoked": False,
                     "original_audit": _audit_public(before),
+                    "import_warnings": import_diagnostics.warnings,
                     "candidate_count": 0,
                     "candidates": [],
                     "recommendation": {
@@ -314,6 +350,7 @@ async def analyze_upload(
                     "mode": "LIVE_AUDIT",
                     "model_invoked": False,
                     "original_audit": _audit_public(before),
+                    "import_warnings": import_diagnostics.warnings,
                     "candidate_count": 0,
                     "candidates": [],
                     "recommendation": {
@@ -327,7 +364,11 @@ async def analyze_upload(
                     "production_changes_applied": False,
                 }
 
-            return await run_in_threadpool(_evaluate_uploaded_data, source, before)
+            result = await run_in_threadpool(
+                _evaluate_uploaded_data, source, before
+            )
+            result["import_warnings"] = import_diagnostics.warnings
+            return result
     except CustomerUploadError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
 
@@ -386,7 +427,15 @@ async def export_approved_copy(
         )
     try:
         with TemporaryDirectory(prefix="dataready-approval-") as temporary:
-            source = await receive_customer_dataset(file, Path(temporary))
+            import_diagnostics = ImportDiagnostics()
+            source = await receive_customer_dataset(
+                file, Path(temporary), diagnostics=import_diagnostics
+            )
+            if import_diagnostics.uncached_formulas:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Cannot export a repair while formula results are missing.",
+                )
             report = await run_in_threadpool(_prepare_audit, source)
             source_hash = report.fingerprint_sha256
             assert source_hash is not None

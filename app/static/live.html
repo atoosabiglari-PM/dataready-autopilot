@@ -152,7 +152,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
         <div class="access">
           <label for="access-code">Competition demo access code <span style="color:var(--muted);font-weight:400">(for live NVIDIA analysis)</span></label>
           <input type="password" id="access-code" autocomplete="off" placeholder="Provided in the judging instructions">
-          <p>A public audit requires no code. Live NVIDIA inference and repaired-file export require the demo access code. It is not your Nebius API key.</p>
+          <p>A public audit requires no code. Live NVIDIA inference and repaired-file export require a separate demo code supplied by the application owner. <strong>Never enter your Nebius API key here.</strong></p>
         </div>
         <div class="actions">
           <button class="btn secondary" id="audit-btn" type="button" disabled>Run safety & quality audit</button>
@@ -169,7 +169,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
           <div class="asideitem"><div class="bullet">3</div><div><strong>Verification over persuasion</strong><p>Model confidence does not count as an improvement. Each permitted strategy runs on its own temporary copy.</p></div></div>
           <div class="asideitem"><div class="bullet">4</div><div><strong>Human-controlled export</strong><p>A recommended repair can be exported only after your explicit approval and a fresh revalidation.</p></div></div>
         </div>
-        <div class="smallprint">This competition build accepts tabular files—not every possible data type. Files are processed in temporary server directories and deleted after the request. Avoid uploading sensitive or confidential records to this public demo.</div>
+        <div class="smallprint">This competition build accepts tabular files—not every possible data type. Saved Excel formula results can be audited without running formulas. Unsaved formula results require recalculation before AI planning. Files are processed in temporary server directories and deleted after the request. Avoid uploading sensitive or confidential records to this public demo.</div>
       </aside>
     </div>
 
@@ -180,6 +180,10 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
         <article class="stat"><div class="name">Readiness status</div><strong id="readiness">—</strong><small>Policy-aware result</small></article>
         <article class="stat"><div class="name">Analyzed rows</div><strong id="rows">—</strong><small>Input data records</small></article>
         <article class="stat highlight"><div class="name">AI candidates</div><strong id="count">—</strong><small>Actual model proposals</small></article>
+      </div>
+      <div class="panel hidden" id="import-warning-panel" style="margin-bottom:16px;border-color:#967954;background:#33291f">
+        <div class="sectionlabel" style="color:var(--gold)">Excel calculation notes</div>
+        <ul id="import-warning-list" style="margin:10px 0 0;color:#f0dfc1;font-size:13px"></ul>
       </div>
       <div class="panel" style="margin-bottom:16px">
         <div class="sectionlabel">Detected findings</div>
@@ -291,6 +295,12 @@ function render(data){
   text("rows",before.row_count);text("count",data.candidate_count||0);
   text("auditnote","SHA-256 source: "+before.fingerprint_sha256+" · No production changes.");
   renderAudit(before.issues);
+  var notes=data.import_warnings||[];
+  var warningPanel=document.getElementById("import-warning-panel");
+  var warningList=document.getElementById("import-warning-list");
+  warningList.replaceChildren();
+  notes.forEach(function(note){warningList.appendChild(el("li","",note));});
+  warningPanel.classList.toggle("hidden",!notes.length);
   var live=data.model_invoked===true;
   text("mode-chip",live?"LIVE NVIDIA NEMOTRON":"LIVE DETERMINISTIC AUDIT");
   var area=document.getElementById("candidate-section"),cards=document.getElementById("candidate-cards");cards.replaceChildren();

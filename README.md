@@ -12,6 +12,53 @@ Gemini proposes constrained repairs from minimized audit evidence. Deterministic
 
 ---
 
+## DataReady Live: customer-upload competition product
+
+**Competition target:** Nebius × NVIDIA Global AI Hackathon, **Best Apps and Agents** track.
+Deadline: **October 30, 2026 at 10:00 AM Pacific**.
+
+DataReady is a **real data-readiness application**, not only a recorded
+demonstration. The live product entrypoint is `app.live_product:app`.
+It supports **real user-supplied** CSV, flat JSON, and first-sheet XLSX input:
+
+1. Upload your own bounded tabular dataset (10 MB / 100k rows / 200 columns).
+2. Audit actual file contents, detecting missing values, exact duplicates,
+   PII-related risks, and other supported findings.
+3. With competition demo access, request **live NVIDIA Nemotron inference**
+   on **Nebius Token Factory**, from minimized and aliased audit evidence.
+4. Independently check candidate policy; execute supported trials in isolated
+   temporary copies; re-audit and compare measured regressions and improvements.
+5. Review rejected candidates, remaining findings and SHA-256 preservation.
+6. Explicitly approve the single improving recommendation and download a
+   **separate repaired CSV**, with a fresh independent check at export.
+7. Download JSON evidence in the browser. Unmodified original files remain
+   on the user's machine.
+
+The real customer-upload app is now implemented on this feature branch, but
+**do not claim it is deployed or fully tested until the new acceptance tests
+and real end-to-end customer flow pass.**
+
+### Launch the real live product locally
+
+```bash
+python -m pip install -r requirements.txt
+python -m uvicorn app.live_product:app --host 127.0.0.1 --port 8080
+```
+
+Open `http://127.0.0.1:8080/` to upload and audit real data.
+Live NVIDIA inference requires a **server-configured, separate competition
+demo access code** and `NEBIUS_API_KEY`. Never put the provider API key in
+the browser or in Git.
+
+**Submission acceptance and safe Cloud Run deployment:**
+[docs/LIVE_COMPETITION_PLAN.md](docs/LIVE_COMPETITION_PLAN.md)
+
+The existing Gemini/Google ADK workflow and the previously deployed fixed
+synthetic showcase are retained, but the replay is not the competition's
+customer-facing live product.
+
+---
+
 ## NVIDIA Competition Showcase
 
 The [DataReady judge-facing showcase](docs/SHOWCASE_DEPLOYMENT.md) demonstrates

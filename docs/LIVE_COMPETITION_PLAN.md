@@ -38,8 +38,9 @@ separate from the public replay service and existing Gemini service.
 2. Choose a user-provided **CSV**, flat **JSON**, or **XLSX** worksheet.
 3. Run the real deterministic audit; verify findings and score reflect that
    specific file, not a fixed demo dataset.
-4. With access credentials from the judging instructions, start the real
-   Nebius Token Factory inference call to NVIDIA Nemotron.
+4. Without signup, codes, or user-supplied provider keys, start the real
+   Nebius Token Factory inference call to NVIDIA Nemotron. The backend
+   automatically enforces global and per-browser fair-use limits.
 5. See the model-generated proposed actions, policy status, independent trial
    measurements, regression results, and source-fingerprint evidence.
 6. If none are useful, show a truthful abstention; if there are critical
@@ -79,12 +80,15 @@ Visit http://127.0.0.1:8080/. Click **Load a sample dataset**, or select
 any compatible CSV/JSON/XLSX file. **Run safety & quality audit** works
 without credentials.
 
-For a real NVIDIA run, set **DATAREADY_DEMO_ACCESS_TOKEN** to a long
-independent demo code (at least 32 characters); keep it out of Git, the
-application HTML, screenshots, and command history. `NEBIUS_API_KEY`
-continues to be read server-side from the local ignored `.env`.
+For a real NVIDIA run, **the customer simply clicks Run live NVIDIA analysis**.
+No access code is entered or distributed. The existing `NEBIUS_API_KEY`
+is read server-side from the local ignored `.env`. An automatically
+signed anonymous browser cookie is issued when the homepage opens.
 
-Do not confuse the guest competition access code with the actual Nebius key.
+For local development, the process enforces a small, reset-on-restart quota.
+This is suitable for trusted local testing only. On Cloud Run, the service
+requires a shared atomic daily quota in Firestore; it never falls back
+to the process-local counter.
 
 The backend also supports a separate
 `DATAREADY_APPROVAL_SIGNING_KEY` (32+ characters). Without one, the
@@ -115,32 +119,50 @@ gcloud run deploy dataready-live \
   --set-build-env-vars='GOOGLE_ENTRYPOINT=uvicorn app.live_product:app --host 0.0.0.0 --port 8080'
 ```
 
-**Do not run this deployment command until the project has a secure
-configuration for these runtime secret variables:**
-`NEBIUS_API_KEY`, `DATAREADY_DEMO_ACCESS_TOKEN`, and
-`DATAREADY_APPROVAL_SIGNING_KEY`.
+**Do not run this deployment command until the project has all these
+server-side prerequisites:**
 
-Configure them through **Google Secret Manager** (not in Git or cloud build
-variables) and grant the runtime service account only secret-access rights.
-Attach them to the new service with `--update-secrets` after verifying
-actual secret names and runtime service-account permissions.
+- **Secret Manager:** `NEBIUS_API_KEY` and
+  `DATAREADY_APPROVAL_SIGNING_KEY` (independent 32+ character signing key).
+  Grant the Cloud Run service account access to those specific secrets.
+  Attach them with `--update-secrets`, after verifying the actual secret names.
+  Do not include either secret value in the frontend, source code, or deploy command.
+- **Firestore:** a Native-mode default Firestore database in the correct
+  Google Cloud project, with the service account authorized for transactional
+  document reads and writes (typically `roles/datastore.user`). Verify the
+  database exists before enabling paid inference. Creation can be billable and
+  database location decisions can be irreversible.
+- **Quota enablement:** runtime configuration
+  `DATAREADY_PUBLIC_INFERENCE_ENABLED=true` and
+  `GOOGLE_CLOUD_PROJECT=dataready-autopilot-atoosa`, after successfully
+  testing the Firestore reservations.
+- **Automatic quotas:** default cap of **5 live NVIDIA requests per anonymous
+  browser session per UTC day**, plus **50 total per UTC day across the entire
+  Cloud Run service**. Operators may reduce limits through
+  `DATAREADY_PUBLIC_SESSION_LIMIT` and
+  `DATAREADY_PUBLIC_DAILY_LIMIT`; the app will reject values exceeding
+  its built-in hard caps. Clearing cookies can reset the per-browser limit,
+  but cannot evade the shared Firestore global quota.
+- **Provider-level controls:** configure Nebius spending monitoring/limits
+  separately and Cloud Billing budget alerts. Usage limits reduce exposure,
+  but do not guarantee zero cost or eliminate all abuse.
 
-A public site without a secret can still show the upload audit, but
-`POST /api/analyze` fails closed (HTTP 503). A guest code supplied to judges
-allows billable model calls. Maintain Nebius account spending controls,
-monitor Cloud Run charges, and prevent credential disclosure. Instance limits
-do **not** enforce a financial budget.
+Without an active Firestore quota, correct service-account permissions,
+and explicit operator enablement, `POST /api/analyze` fails closed (503).
+No customer or judge access code is requested. `/api/audit` remains
+available without paid NVIDIA calls.
 
-Cloud Run allows cost-bearing user-supplied uploads and paid inference in
-the authenticated workflow. Do not represent it as cost-free hosting.
+Cloud Run allows cost-bearing user-provided uploads and Nebius inference.
+The service's max-instance and concurrency settings do **not** enforce a
+financial spending cap or replace provider-side budget controls.
 
 ## 5. Formal hackathon submission requirements
 
 **Deadline:** Fri **Oct 30, 2026 at 10:00 AM Pacific**.
 
 **Judging:** Dec 1–15, 2026. Keep the free-to-test working application
-available to judges until Dec 15 and include working judge credentials
-in Devpost testing instructions if using a restricted application.
+available to judges until Dec 15. Our public live application requires
+no login or judge credentials; supply the direct upload-and-analysis URL.
 
 **Track:** Best Apps and Agents.
 
@@ -193,7 +215,8 @@ into the video as if it were fresh inference.
 - [ ] **Run full local tests after this addition** and repair any regressions.
 - [ ] Verify a real upload, real Nebius/Nemotron call, and real CSV export
       in the new customer UI (not a mock).
-- [ ] Securely configure Cloud Run runtime secrets and spending controls.
+- [ ] Securely configure Cloud Run runtime secrets, Firestore atomic quota
+      transactions, anonymous guest sessions, and spending controls.
 - [ ] Deploy and verify separate **dataready-live** URL using real uploads.
 - [ ] Update the main README to prominently describe the live customer product
       and how to reproduce the full demonstration.

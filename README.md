@@ -24,7 +24,7 @@ It supports **real user-supplied** CSV, flat JSON, and first-sheet XLSX input:
 1. Upload your own bounded tabular dataset (10 MB / 100k rows / 200 columns).
 2. Audit actual file contents, detecting missing values, exact duplicates,
    PII-related risks, and other supported findings.
-3. With competition demo access, request **live NVIDIA Nemotron inference**
+3. With no access code, request **live NVIDIA Nemotron inference**
    on **Nebius Token Factory**, from minimized and aliased audit evidence.
 4. Independently check candidate policy; execute supported trials in isolated
    temporary copies; re-audit and compare measured regressions and improvements.
@@ -46,9 +46,13 @@ python -m uvicorn app.live_product:app --host 127.0.0.1 --port 8080
 ```
 
 Open `http://127.0.0.1:8080/` to upload and audit real data.
-Live NVIDIA inference requires a **server-configured, separate competition
-demo access code** and `NEBIUS_API_KEY`. Never put the provider API key in
-the browser or in Git.
+**Customers do not need codes, accounts, or provider credentials.**
+Nebius inference is paid by the app operator using the server-side
+`NEBIUS_API_KEY`, with quota and cost protections enforced automatically.
+Local development uses bounded in-memory quotas. Cloud Run deployment
+requires an atomic **Firestore daily quota**, a separate server-side
+`DATAREADY_APPROVAL_SIGNING_KEY`, and explicit operator enablement.
+Never put the provider API key in the browser or in Git.
 
 **Submission acceptance and safe Cloud Run deployment:**
 [docs/LIVE_COMPETITION_PLAN.md](docs/LIVE_COMPETITION_PLAN.md)

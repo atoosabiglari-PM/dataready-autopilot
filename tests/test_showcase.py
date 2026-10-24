@@ -144,7 +144,7 @@ def test_existing_health_and_gemini_route_remain_available():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
-    assert any(route.path == "/demo/repair" for route in web.app.routes)
+    assert any(getattr(route, "path", None) == "/demo/repair" for route in web.app.routes)
 
 
 def test_missing_html_page_is_not_served(monkeypatch, tmp_path):

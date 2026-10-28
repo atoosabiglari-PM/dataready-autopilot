@@ -19,7 +19,7 @@ from tempfile import TemporaryDirectory
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from pydantic import ValidationError
 
 from app.core.candidates import CandidateBatch, RepairCandidate
@@ -36,6 +36,7 @@ from app.services.user_import import (
     ImportDiagnostics,
     receive_customer_dataset,
 )
+from app.services.excel_layout import inspect_customer_workbook
 from app.services.public_quota import (
     PublicQuotaExceeded,
     PublicQuotaUnavailable,
@@ -300,14 +301,35 @@ def health() -> dict[str, str]:
     return {"status": "healthy", "service": "dataready-live"}
 
 
+@app.post("/api/workbook-layout")
+async def workbook_layout(
+    file: UploadFile = File(...),
+) -> JSONResponse:
+    """Provide a small redacted Excel header-row preview without NVIDIA calls."""
+    try:
+        with TemporaryDirectory(prefix="dataready-layout-") as temporary:
+            result = await inspect_customer_workbook(file, Path(temporary))
+            return JSONResponse(
+                content=result,
+                headers={"Cache-Control": "no-store, private"},
+            )
+    except CustomerUploadError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+
+
 @app.post("/api/audit")
-async def audit_upload(file: UploadFile = File(...)) -> dict[str, object]:
+async def audit_upload(
+    file: UploadFile = File(...),
+    sheet_name: str | None = Form(None),
+    header_row: int = Form(1),
+) -> dict[str, object]:
     """Any supported tabular dataset can be inspected without a model call."""
     try:
         with TemporaryDirectory(prefix="dataready-upload-") as temporary:
             import_diagnostics = ImportDiagnostics()
             source = await receive_customer_dataset(
-                file, Path(temporary), diagnostics=import_diagnostics
+                file, Path(temporary), diagnostics=import_diagnostics,
+                sheet_name=sheet_name, header_row=header_row,
             )
             before = await run_in_threadpool(_prepare_audit, source)
             return {
@@ -326,13 +348,16 @@ async def audit_upload(file: UploadFile = File(...)) -> dict[str, object]:
 async def analyze_upload(
     request: Request,
     file: UploadFile = File(...),
+    sheet_name: str | None = Form(None),
+    header_row: int = Form(1),
 ) -> dict[str, object]:
     """Live NVIDIA analysis with server-side quotas, not customer access codes."""
     try:
         with TemporaryDirectory(prefix="dataready-upload-") as temporary:
             import_diagnostics = ImportDiagnostics()
             source = await receive_customer_dataset(
-                file, Path(temporary), diagnostics=import_diagnostics
+                file, Path(temporary), diagnostics=import_diagnostics,
+                sheet_name=sheet_name, header_row=header_row,
             )
             before = await run_in_threadpool(_prepare_audit, source)
 
@@ -465,6 +490,8 @@ async def export_approved_copy(
     file: UploadFile = File(...),
     approval_token: str = Form(...),
     consent: str = Form(...),
+    sheet_name: str | None = Form(None),
+    header_row: int = Form(1),
 ) -> Response:
     """No customer codes; signed approval and fresh policy checks gate export."""
     if consent != "approve":
@@ -475,7 +502,8 @@ async def export_approved_copy(
         with TemporaryDirectory(prefix="dataready-approval-") as temporary:
             import_diagnostics = ImportDiagnostics()
             source = await receive_customer_dataset(
-                file, Path(temporary), diagnostics=import_diagnostics
+                file, Path(temporary), diagnostics=import_diagnostics,
+                sheet_name=sheet_name, header_row=header_row,
             )
             if import_diagnostics.uncached_formulas:
                 raise HTTPException(

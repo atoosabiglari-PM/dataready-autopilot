@@ -37,6 +37,8 @@ class ImportDiagnostics:
     warnings: list[str] = field(default_factory=list)
     uncached_formulas: int = 0
     cached_formulas: int = 0
+    selected_sheet: str | None = None
+    selected_header_row: int = 1
 
 
 def _scalar(value: Any) -> str:
@@ -111,6 +113,9 @@ def _convert_excel(
     source: Path,
     destination: Path,
     diagnostics: ImportDiagnostics | None = None,
+    *,
+    sheet_name: str | None = None,
+    header_row: int = 1,
 ) -> None:
     """Read saved formula results, never evaluate or execute Excel formulas.
 
@@ -133,6 +138,9 @@ def _convert_excel(
     except (BadZipFile, OSError) as error:
         raise CustomerUploadError("The XLSX workbook is unreadable.") from error
 
+    if not 1 <= header_row <= MAX_ROWS + 1:
+        raise CustomerUploadError("The selected Excel header row is not supported.")
+
     try:
         from openpyxl import load_workbook
     except ImportError as error:
@@ -151,12 +159,27 @@ def _convert_excel(
         )
         if not formulas.worksheets or not calculated.worksheets:
             raise CustomerUploadError("The workbook contains no worksheets.")
-        worksheet = formulas.worksheets[0]
-        cached_sheet = calculated.worksheets[0]
+        if sheet_name is not None:
+            if sheet_name not in formulas.sheetnames:
+                raise CustomerUploadError("The selected Excel worksheet was not found.")
+            worksheet = formulas[sheet_name]
+            cached_sheet = calculated[sheet_name]
+        else:
+            worksheet = formulas.worksheets[0]
+            cached_sheet = calculated.worksheets[0]
         if worksheet.max_column and worksheet.max_column > MAX_COLUMNS:
             raise CustomerUploadError("The worksheet exceeds the column limit.")
-        if worksheet.max_row and worksheet.max_row > MAX_ROWS + 1:
+        if worksheet.max_row and worksheet.max_row > MAX_ROWS + header_row:
             raise CustomerUploadError("The worksheet exceeds the row limit.")
+
+        if diagnostics is not None:
+            diagnostics.selected_sheet = worksheet.title
+            diagnostics.selected_header_row = header_row
+            if sheet_name is not None or header_row != 1:
+                diagnostics.warnings.append(
+                    f"Excel table: worksheet {worksheet.title!r}, header at row "
+                    f"{header_row}. Rows above the header were excluded."
+                )
 
         with destination.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
@@ -165,7 +188,9 @@ def _convert_excel(
                 start=1,
             ):
                 formula_cells, cached_cells = cell_pair
-                if count > MAX_ROWS + 1:
+                if count < header_row:
+                    continue
+                if count - header_row > MAX_ROWS:
                     raise CustomerUploadError("The worksheet exceeds the row limit.")
                 if formula_cells is None or cached_cells is None:
                     raise CustomerUploadError("Workbook formula and value views differ.")
@@ -187,6 +212,8 @@ def _convert_excel(
                     row.append(_scalar(value))
                 writer.writerow(row)
 
+        if not destination.is_file() or destination.stat().st_size == 0:
+            raise CustomerUploadError("The selected Excel header row contains no table.")
         if destination.stat().st_size > MAX_FILE_SIZE_BYTES:
             raise CustomerUploadError("The converted worksheet exceeds the size limit.")
 
@@ -225,6 +252,8 @@ async def receive_customer_dataset(
     directory: Path,
     *,
     diagnostics: ImportDiagnostics | None = None,
+    sheet_name: str | None = None,
+    header_row: int = 1,
 ) -> Path:
     """Receive a bounded upload, normalize if needed, and return a local CSV.
 
@@ -256,6 +285,11 @@ async def receive_customer_dataset(
     if size == 0:
         raise CustomerUploadError("The uploaded file is empty.")
 
+    if extension != ".xlsx" and (sheet_name is not None or header_row != 1):
+        raise CustomerUploadError(
+            "Worksheet and header-row settings are available for Excel files only."
+        )
+
     if extension == ".csv":
         return incoming
 
@@ -263,5 +297,8 @@ async def receive_customer_dataset(
     if extension == ".json":
         _convert_json(incoming, destination)
     else:
-        _convert_excel(incoming, destination, diagnostics)
+        _convert_excel(
+            incoming, destination, diagnostics,
+            sheet_name=sheet_name, header_row=header_row,
+        )
     return destination

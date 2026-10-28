@@ -12,7 +12,7 @@ from zipfile import BadZipFile, ZipFile
 from fastapi import UploadFile
 
 from app.services.user_import import CustomerUploadError, MAX_XLSX_EXPANDED_BYTES
-from app.tools.preflight import MAX_FILE_SIZE_BYTES
+from app.tools.preflight import MAX_COLUMNS, MAX_FILE_SIZE_BYTES
 
 MAX_SHEETS = 30
 MAX_PREVIEW_ROWS = 25
@@ -73,7 +73,7 @@ def inspect_xlsx_layout(source: Path) -> dict[str, object]:
         for worksheet in sheets:
             preview_rows: list[dict[str, object]] = []
             for row_number, cells in enumerate(
-                worksheet.iter_rows(max_row=MAX_PREVIEW_ROWS), start=1
+                worksheet.iter_rows(max_row=MAX_PREVIEW_ROWS, max_col=MAX_COLUMNS), start=1
             ):
                 samples: list[str] = []
                 present = 0

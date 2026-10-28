@@ -52,6 +52,21 @@ h2{font-size:34px;letter-spacing:-.052em;line-height:1.2;margin:6px 0}
 #file-input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
 .file-selected{color:var(--sea);margin:14px 0 0;font-size:13px;min-height:20px;overflow-wrap:anywhere}
 .access{margin-top:21px}
+.excel-layout{margin:17px 0;padding:17px;border:1px solid #617c66;border-radius:12px;background:#1c2c27}
+.excel-fields{display:grid;grid-template-columns:1fr 120px;gap:11px;margin-top:12px}
+.excel-field label{display:block;font-size:12px;font-weight:700;margin:0 0 5px;color:#d4e3d6}
+.excel-field select,.excel-field input{width:100%;border:1px solid #527462;background:#121d1c;border-radius:7px;padding:9px;color:var(--text);font-size:13px}
+.excel-intro{font-size:12px;color:var(--muted);margin:7px 0}
+#excel-preview{margin-top:12px;max-height:260px;overflow-y:auto;border-top:1px solid #435c50}
+.layout-row{display:flex;gap:11px;align-items:start;border-bottom:1px solid #34483e;padding:7px 2px;font-size:12px}
+.layout-row .row-num{min-width:56px;flex:0 0 56px;color:var(--lime);text-decoration:underline;cursor:pointer;border:0;background:none;text-align:left;padding:0}
+.layout-row .row-preview{color:#c4d4ca;overflow-wrap:anywhere}
+.findings-group{background:#20302c;border:1px solid #385348;border-radius:9px;padding:13px;margin-top:10px;font-size:12px}
+.findings-group strong{display:block;font-size:14px;margin-bottom:3px}
+.findings-group span{color:var(--muted)}
+.warn-message{padding:13px 15px;border-radius:9px;background:#322b21;border:1px solid #7b6443;color:#f6daa6;font-size:12px;margin:11px 0}
+.findings-details{margin-top:18px}
+
 .access label{display:block;color:var(--text);font-size:13px;font-weight:700;margin-bottom:8px}
 .access input{width:100%;border:1px solid #49625e;background:#172222;border-radius:9px;padding:12px 14px;color:var(--text);outline:0}
 .access input:focus{border-color:var(--lime)}
@@ -136,7 +151,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
   <section id="upload" class="main container">
     <div class="flexsection">
       <div><div class="kicker">01 / DATA INPUT</div><h2>Analyze your own dataset.</h2></div>
-      <div class="section-caption">Real file processing. No fixed results or synthetic replay. CSV, flat JSON, and first-sheet XLSX supported, up to 10 MB.</div>
+      <div class="section-caption">Real file processing. No fixed results or synthetic replay. CSV, flat JSON, and XLSX supported, with selectable worksheet and header row. Maximum file size: 10 MB.</div>
     </div>
     <div class="workbench">
       <div class="panel">
@@ -149,6 +164,18 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
         </label>
         <input type="file" id="file-input" accept=".csv,.json,.xlsx" aria-label="Dataset file">
         <div class="file-selected" id="selected">No file selected</div>
+        <div class="excel-layout hidden" id="excel-layout">
+          <div class="sectionlabel">Excel table layout</div>
+          <p class="excel-intro">Choose the worksheet and the row containing actual column names. Spreadsheet titles and configuration notes are not data headers.</p>
+          <div class="excel-fields">
+            <div class="excel-field"><label for="excel-sheet">Worksheet</label>
+              <select id="excel-sheet" aria-label="Excel worksheet"></select></div>
+            <div class="excel-field"><label for="excel-header-row">Header row number</label>
+              <input id="excel-header-row" type="number" min="1" max="100001" step="1" value="1"></div>
+          </div>
+          <div id="excel-layout-message" class="excel-intro" aria-live="polite"></div>
+          <div id="excel-preview" aria-label="First workbook rows; select a row number to use it as the header"></div>
+        </div>
         <div class="access">
           <p><strong style="color:var(--lime)">No signup or access code.</strong> Run your audit free. Live NVIDIA analysis has automatic fair-use limits (up to five analyses per browser session per day) and a shared daily allowance. DataReady keeps provider credentials entirely on the server.</p>
         </div>
@@ -185,10 +212,17 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
       </div>
       <div class="panel" style="margin-bottom:16px">
         <div class="sectionlabel">Detected findings</div>
-        <table aria-label="Dataset quality findings">
-          <thead><tr><th>Finding</th><th>Column</th><th>Severity</th><th>Count</th></tr></thead>
-          <tbody id="findings"></tbody>
-        </table>
+        <p class="auditnote" id="findings-count" aria-live="polite"></p>
+        <div id="findings-groups" class="grid2"></div>
+        <div id="layout-guidance"></div>
+        <button id="show-findings" class="ghost findings-details" type="button" aria-expanded="false" hidden>Show detailed findings</button>
+        <div id="findings-detail" class="hidden findings-details">
+          <table aria-label="All dataset quality findings">
+            <thead><tr><th>Finding</th><th>Column</th><th>Severity</th><th>Count</th></tr></thead>
+            <tbody id="findings"></tbody>
+          </table>
+        </div>
+        <p class="auditnote" id="score-guidance"></p>
         <p class="auditnote" id="auditnote"></p>
       </div>
       <div id="candidate-section" class="hidden">
@@ -216,8 +250,10 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
 <script>
 (function(){
 "use strict";
-var selected=null, latest=null;
+var selected=null, latest=null, workbookLayout=null;
 var uploadInput=document.getElementById("file-input"), drop=document.getElementById("dropzone");
+var excelBox=document.getElementById("excel-layout");
+var excelSheet=document.getElementById("excel-sheet"), excelHeader=document.getElementById("excel-header-row");
 var feedback=document.getElementById("feedback");
 var auditBtn=document.getElementById("audit-btn"), analyzeBtn=document.getElementById("analyze-btn"), downloadBtn=document.getElementById("download-btn");
 var results=document.getElementById("results"), check=document.getElementById("approve-check");
@@ -225,14 +261,72 @@ var MAX=10*1024*1024;
 function el(name,cls,text){var x=document.createElement(name);if(cls)x.className=cls;if(text!==undefined)x.textContent=String(text);return x;}
 function text(id,value){document.getElementById(id).textContent=String(value);}
 function status(message,isError){feedback.className=isError?"error":"";feedback.textContent=message;}
+function invalidatePreviousResults(){
+  latest=null;results.style.display="none";check.checked=false;downloadBtn.disabled=true;
+}
+function selectedExcel(){
+  return !!selected && selected.name.toLowerCase().endsWith(".xlsx");
+}
+function appendExcelOptions(form){
+  if(!selectedExcel())return;
+  if(excelSheet.value)form.append("sheet_name",excelSheet.value);
+  form.append("header_row",String(Math.max(1,Number(excelHeader.value)||1)));
+}
+function drawWorkbookPreview(){
+  var box=document.getElementById("excel-preview");box.replaceChildren();
+  if(!workbookLayout)return;
+  var sheet=(workbookLayout.sheets||[]).find(function(s){return s.name===excelSheet.value;});
+  if(!sheet)return;
+  text("excel-layout-message","Approximately "+(sheet.approximate_rows||0)+" rows and "+(sheet.approximate_columns||0)+" columns. Click the row number that contains field names.");
+  (sheet.preview_rows||[]).forEach(function(row){
+    var line=el("div","layout-row");
+    var button=el("button","row-num","Row "+row.row_number);
+    button.type="button";
+    button.title="Use Excel row "+row.row_number+" as the header";
+    button.addEventListener("click",function(){
+      excelHeader.value=String(row.row_number);invalidatePreviousResults();
+      status("Selected Excel row "+row.row_number+" as the table header. Re-run the audit.");
+    });
+    line.appendChild(button);
+    line.appendChild(el("div","row-preview",row.values.join(" | ")+"  ("+row.populated_cells+" populated cells)"));
+    box.appendChild(line);
+  });
+}
+async function inspectWorkbook(file){
+  if(!file||!file.name.toLowerCase().endsWith(".xlsx")||file.size>MAX)return;
+  text("excel-layout-message","Inspecting worksheet names and potential header rows without AI…");
+  var form=new FormData();form.append("file",file,file.name);
+  try{
+    var response=await send("/api/workbook-layout",form);
+    var data=await response.json();
+    if(selected!==file)return;
+    workbookLayout=data;excelSheet.replaceChildren();
+    data.sheets.forEach(function(sheet){
+      var option=el("option","",sheet.name);option.value=sheet.name;
+      excelSheet.appendChild(option);
+    });
+    excelHeader.value="1";
+    drawWorkbookPreview();
+  }catch(error){
+    if(selected!==file)return;
+    text("excel-layout-message","Cannot preview workbook layout: "+error.message+". You can still try the default first sheet.");
+  }
+}
 function setFile(file){
-  selected=file||null;latest=null;
+  selected=file||null;workbookLayout=null;invalidatePreviousResults();
   auditBtn.disabled=!selected;analyzeBtn.disabled=!selected;
-  results.style.display="none";check.checked=false;downloadBtn.disabled=true;
+  excelBox.classList.toggle("hidden",!selectedExcel());
+  excelSheet.replaceChildren();excelHeader.value="1";
+  document.getElementById("excel-preview").replaceChildren();
   if(!selected){text("selected","No file selected");return;}
   text("selected",selected.name+" · "+(selected.size/1024).toFixed(1)+" KB");
   status(selected.size>MAX?"File exceeds the 10 MB limit.": "Ready to analyze.",selected.size>MAX);
+  if(selectedExcel())inspectWorkbook(selected);
 }
+excelSheet.addEventListener("change",function(){invalidatePreviousResults();drawWorkbookPreview();});
+excelHeader.addEventListener("change",function(){
+  invalidatePreviousResults();status("Excel header row changed. Re-run the audit.");
+});
 uploadInput.addEventListener("change",function(){setFile(uploadInput.files[0]);});
 ["dragenter","dragover"].forEach(function(event){drop.addEventListener(event,function(e){e.preventDefault();drop.classList.add("drag");});});
 ["dragleave","drop"].forEach(function(event){drop.addEventListener(event,function(e){e.preventDefault();drop.classList.remove("drag");});});
@@ -258,20 +352,54 @@ async function send(url,form){
   }
   return response;
 }
-function renderAudit(issues){
-  var tbody=document.getElementById("findings");tbody.replaceChildren();
-  if(!issues.length){
-    var tr=el("tr");var td=el("td","", "No audited findings");td.colSpan=4;tr.appendChild(td);tbody.appendChild(tr);return;
-  }
+function renderAudit(issues, score){
+  var tbody=document.getElementById("findings"), groupsBox=document.getElementById("findings-groups");
+  tbody.replaceChildren();groupsBox.replaceChildren();
+  var grouped={};
   issues.forEach(function(issue){
+    if(!grouped[issue.code])grouped[issue.code]={severity:issue.severity,entries:0,affected:0};
+    grouped[issue.code].entries+=1;grouped[issue.code].affected+=Number(issue.count)||0;
     var tr=el("tr");
     tr.appendChild(el("td","",issue.code.replaceAll("_"," ")));
-    tr.appendChild(el("td","",issue.column||"All rows"));
+    tr.appendChild(el("td","",issue.column||"Across dataset"));
     tr.appendChild(el("td","issue-"+issue.severity.toLowerCase(),issue.severity));
     tr.appendChild(el("td","",issue.count));
     tbody.appendChild(tr);
   });
+  var codes=Object.keys(grouped).sort(function(a,b){
+    return (grouped[b].severity==="CRITICAL"?1:0)-(grouped[a].severity==="CRITICAL"?1:0);
+  });
+  codes.forEach(function(code){
+    var info=grouped[code],block=el("div","findings-group");
+    var head=el("strong","issue-"+info.severity.toLowerCase(),code.replaceAll("_"," "));
+    block.appendChild(head);
+    block.appendChild(el("span","",info.entries+" finding "+(info.entries===1?"entry":"entries")+" · "+info.affected+" total reported occurrences (not necessarily unique rows)"));
+    groupsBox.appendChild(block);
+  });
+  text("findings-count",issues.length+" finding entries across "+codes.length+" issue types. Detailed results are available below.");
+  var detailed=document.getElementById("findings-detail"), toggle=document.getElementById("show-findings");
+  toggle.hidden=issues.length<=7;
+  detailed.classList.toggle("hidden",issues.length>7);
+  toggle.textContent="Show all "+issues.length+" detailed findings";
+  toggle.setAttribute("aria-expanded",String(issues.length<=7));
+  var guidance=document.getElementById("layout-guidance");guidance.replaceChildren();
+  if(issues.some(function(x){return x.code==="SUSPICIOUS_COLUMN_NAME";})){
+    guidance.appendChild(el("p","warn-message",
+      "Possible Excel layout mismatch: blank or Unnamed headers were found. For Excel, choose the correct worksheet and row containing real column names, then run the audit again. DataReady will not silently discard columns."));
+  }
+  if(issues.some(function(x){return x.code==="PII_VALUE_PATTERN"||x.code==="PII_COLUMN_NAME";})){
+    guidance.appendChild(el("p","warn-message",
+      "Potential contact or personal-data patterns were detected. DataReady has not sent these rows to NVIDIA. Check the columns before deciding whether the data is safe for AI planning; geographic coordinates may also cause false alarms."));
+  }
+  text("score-guidance",score===0&&issues.length?
+    "The audit score has reached its penalty floor. Repeated per-column warnings can reduce it to zero; this does NOT prove that all records are unusable. Confirm the table layout before interpreting the score.":"");
 }
+document.getElementById("show-findings").addEventListener("click",function(){
+  var details=document.getElementById("findings-detail"),nowOpen=details.classList.contains("hidden");
+  details.classList.toggle("hidden",!nowOpen);
+  this.textContent=(nowOpen?"Hide":"Show")+" detailed findings";
+  this.setAttribute("aria-expanded",String(nowOpen));
+});
 function candidateCard(item,win){
   var card=el("article","candidate"+(win?" good":""));
   var top=el("div","cardtop");
@@ -291,8 +419,8 @@ function render(data){
   var before=data.original_audit;
   text("quality",before.quality_score+"/100");text("readiness",before.status);
   text("rows",before.row_count);text("count",data.candidate_count||0);
-  text("auditnote","SHA-256 source: "+before.fingerprint_sha256+" · No production changes.");
-  renderAudit(before.issues);
+  text("auditnote","SHA-256 of audited "+(selectedExcel()?"normalized Excel table":"dataset")+": "+before.fingerprint_sha256+" · No production changes.");
+  renderAudit(before.issues,before.quality_score);
   var notes=data.import_warnings||[];
   var warningPanel=document.getElementById("import-warning-panel");
   var warningList=document.getElementById("import-warning-list");
@@ -321,6 +449,7 @@ async function analyze(live){
   if(!selected)return;
   if(selected.size>MAX){status("This file is too large for the demo.",true);return;}
   var form=new FormData();form.append("file",selected,selected.name);
+  appendExcelOptions(form);
   setBusy(true);
   status(live?"Running live NVIDIA Nemotron, then independently evaluating candidates…":"Inspecting your actual uploaded dataset…");
   try{
@@ -339,6 +468,7 @@ downloadBtn.addEventListener("click",async function(){
   setBusy(true);status("Rechecking source, policy, and trial evidence before creating your repaired copy…");
   try{
     var form=new FormData();form.append("file",selected,selected.name);
+    appendExcelOptions(form);
     form.append("approval_token",latest.approval_token);form.append("consent","approve");
     var response=await send("/api/export",form);
     var blob=await response.blob(),url=URL.createObjectURL(blob);

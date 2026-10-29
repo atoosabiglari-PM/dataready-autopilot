@@ -166,12 +166,12 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
         <div class="file-selected" id="selected">No file selected</div>
         <div class="excel-layout hidden" id="excel-layout">
           <div class="sectionlabel">Excel table layout</div>
-          <p class="excel-intro">Choose the worksheet and the row containing actual column names. Spreadsheet titles and configuration notes are not data headers.</p>
+          <p class="excel-intro">DataReady identifies likely tables automatically from row structure. Review or override the detected worksheet and header only when needed.</p>
           <div class="excel-fields">
             <div class="excel-field"><label for="excel-sheet">Worksheet</label>
               <select id="excel-sheet" aria-label="Excel worksheet"></select></div>
             <div class="excel-field"><label for="excel-header-row">Header row number</label>
-              <input id="excel-header-row" type="number" min="1" max="100001" step="1" value="1"></div>
+              <input id="excel-header-row" type="number" min="1" max="100001" step="1" value="" placeholder="Detecting…"></div>
           </div>
           <div id="excel-layout-message" class="excel-intro" aria-live="polite"></div>
           <div id="excel-preview" aria-label="First workbook rows; select a row number to use it as the header"></div>
@@ -251,6 +251,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
 (function(){
 "use strict";
 var selected=null, latest=null, workbookLayout=null;
+var layoutConfirmed=false, layoutExplicit=false;
 var uploadInput=document.getElementById("file-input"), drop=document.getElementById("dropzone");
 var excelBox=document.getElementById("excel-layout");
 var excelSheet=document.getElementById("excel-sheet"), excelHeader=document.getElementById("excel-header-row");
@@ -268,24 +269,44 @@ function selectedExcel(){
   return !!selected && selected.name.toLowerCase().endsWith(".xlsx");
 }
 function appendExcelOptions(form){
-  if(!selectedExcel())return;
-  if(excelSheet.value)form.append("sheet_name",excelSheet.value);
-  form.append("header_row",String(Math.max(1,Number(excelHeader.value)||1)));
+  if(!selectedExcel())return true;
+  if(!layoutConfirmed){
+    status("DataReady could not confidently identify one table. Select the worksheet and click the row containing the column headers.",true);
+    return false;
+  }
+  // If the recommendation was accepted unchanged, repeat detection on the
+  // server instead of trusting a client-supplied row number.
+  if(layoutExplicit){
+    form.append("sheet_name",excelSheet.value);
+    form.append("header_row",String(Number(excelHeader.value)));
+  }
+  return true;
 }
 function drawWorkbookPreview(){
   var box=document.getElementById("excel-preview");box.replaceChildren();
   if(!workbookLayout)return;
   var sheet=(workbookLayout.sheets||[]).find(function(s){return s.name===excelSheet.value;});
   if(!sheet)return;
-  text("excel-layout-message","Approximately "+(sheet.approximate_rows||0)+" rows and "+(sheet.approximate_columns||0)+" columns. Click the row number that contains field names.");
+  var inferred=workbookLayout.intelligence||{};
+  var shape=(sheet.approximate_rows&&sheet.approximate_columns)?
+    ("Approximately "+sheet.approximate_rows+" rows and "+sheet.approximate_columns+" columns. "):
+    "Worksheet preview available. ";
+  var choice=(layoutConfirmed&&!layoutExplicit&&inferred.auto_selected)?
+    ("Auto-detected "+inferred.recommended_sheet+", header row "+inferred.recommended_header_row+
+     " (high confidence). "+(inferred.leading_note_rows||0)+" introductory row(s) will be excluded. "):
+    (layoutConfirmed?"Manual worksheet/header selection. ":
+     "Multiple possible tables or insufficient evidence. Choose the column-header row. ");
+  text("excel-layout-message",choice+shape+"You can override by clicking a row number.");
   (sheet.preview_rows||[]).forEach(function(row){
     var line=el("div","layout-row");
     var button=el("button","row-num","Row "+row.row_number);
     button.type="button";
     button.title="Use Excel row "+row.row_number+" as the header";
     button.addEventListener("click",function(){
-      excelHeader.value=String(row.row_number);invalidatePreviousResults();
-      status("Selected Excel row "+row.row_number+" as the table header. Re-run the audit.");
+      excelHeader.value=String(row.row_number);
+      layoutConfirmed=true;layoutExplicit=true;invalidatePreviousResults();
+      drawWorkbookPreview();
+      status("Using Excel row "+row.row_number+" as the header on "+excelSheet.value+".");
     });
     line.appendChild(button);
     line.appendChild(el("div","row-preview",row.values.join(" | ")+"  ("+row.populated_cells+" populated cells)"));
@@ -305,27 +326,48 @@ async function inspectWorkbook(file){
       var option=el("option","",sheet.name);option.value=sheet.name;
       excelSheet.appendChild(option);
     });
-    excelHeader.value="1";
+    var inferred=data.intelligence||{};
+    if(inferred.auto_selected){
+      excelSheet.value=inferred.recommended_sheet;
+      excelHeader.value=String(inferred.recommended_header_row);
+      layoutConfirmed=true;layoutExplicit=false;
+      status("DataReady automatically detected the worksheet and header row. You can override them.");
+    }else{
+      excelSheet.value=data.default_sheet;
+      excelHeader.value="";
+      layoutConfirmed=false;layoutExplicit=false;
+      status("DataReady found ambiguous Excel structure. Select a table-header row to continue.");
+    }
     drawWorkbookPreview();
   }catch(error){
     if(selected!==file)return;
-    text("excel-layout-message","Cannot preview workbook layout: "+error.message+". You can still try the default first sheet.");
+    layoutConfirmed=false;
+    text("excel-layout-message","Cannot inspect workbook structure: "+error.message+". Please select a supported workbook.");
+    status("Workbook layout inspection failed; analysis is blocked until the table can be identified.",true);
   }
 }
 function setFile(file){
-  selected=file||null;workbookLayout=null;invalidatePreviousResults();
+  selected=file||null;workbookLayout=null;layoutConfirmed=!file||!file.name.toLowerCase().endsWith(".xlsx");
+  layoutExplicit=false;invalidatePreviousResults();
   auditBtn.disabled=!selected;analyzeBtn.disabled=!selected;
   excelBox.classList.toggle("hidden",!selectedExcel());
-  excelSheet.replaceChildren();excelHeader.value="1";
+  excelSheet.replaceChildren();excelHeader.value="";
   document.getElementById("excel-preview").replaceChildren();
   if(!selected){text("selected","No file selected");return;}
   text("selected",selected.name+" · "+(selected.size/1024).toFixed(1)+" KB");
   status(selected.size>MAX?"File exceeds the 10 MB limit.": "Ready to analyze.",selected.size>MAX);
   if(selectedExcel())inspectWorkbook(selected);
 }
-excelSheet.addEventListener("change",function(){invalidatePreviousResults();drawWorkbookPreview();});
+excelSheet.addEventListener("change",function(){
+  layoutConfirmed=false;layoutExplicit=true;excelHeader.value="";
+  invalidatePreviousResults();drawWorkbookPreview();
+  status("Worksheet changed. Select a row containing column headers.");
+});
 excelHeader.addEventListener("change",function(){
-  invalidatePreviousResults();status("Excel header row changed. Re-run the audit.");
+  layoutConfirmed=Number.isInteger(Number(excelHeader.value))&&Number(excelHeader.value)>0&&excelHeader.value!=="";
+  layoutExplicit=true;
+  invalidatePreviousResults();drawWorkbookPreview();
+  status(layoutConfirmed?"Excel header chosen. Re-run the audit.":"Choose a valid header row.",!layoutConfirmed);
 });
 uploadInput.addEventListener("change",function(){setFile(uploadInput.files[0]);});
 ["dragenter","dragover"].forEach(function(event){drop.addEventListener(event,function(e){e.preventDefault();drop.classList.add("drag");});});
@@ -449,7 +491,7 @@ async function analyze(live){
   if(!selected)return;
   if(selected.size>MAX){status("This file is too large for the demo.",true);return;}
   var form=new FormData();form.append("file",selected,selected.name);
-  appendExcelOptions(form);
+  if(!appendExcelOptions(form))return;
   setBusy(true);
   status(live?"Running live NVIDIA Nemotron, then independently evaluating candidates…":"Inspecting your actual uploaded dataset…");
   try{
@@ -468,7 +510,7 @@ downloadBtn.addEventListener("click",async function(){
   setBusy(true);status("Rechecking source, policy, and trial evidence before creating your repaired copy…");
   try{
     var form=new FormData();form.append("file",selected,selected.name);
-    appendExcelOptions(form);
+    if(!appendExcelOptions(form))return;
     form.append("approval_token",latest.approval_token);form.append("consent","approve");
     var response=await send("/api/export",form);
     var blob=await response.blob(),url=URL.createObjectURL(blob);

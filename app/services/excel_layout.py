@@ -12,6 +12,7 @@ from zipfile import BadZipFile, ZipFile
 from fastapi import UploadFile
 
 from app.services.user_import import CustomerUploadError, MAX_XLSX_EXPANDED_BYTES
+from app.services.layout_intelligence import detect_workbook_tables
 from app.tools.preflight import MAX_COLUMNS, MAX_FILE_SIZE_BYTES
 
 MAX_SHEETS = 30
@@ -95,10 +96,18 @@ def inspect_xlsx_layout(source: Path) -> dict[str, object]:
                 "approximate_columns": worksheet.max_column,
                 "preview_rows": preview_rows,
             })
+        inferred = detect_workbook_tables(sheets)
         return {
             "sheets": result,
-            "default_sheet": result[0]["name"],
-            "default_header_row": 1,
+            "default_sheet": (
+                inferred["recommended_sheet"]
+                if inferred["auto_selected"] else result[0]["name"]
+            ),
+            "default_header_row": (
+                inferred["recommended_header_row"]
+                if inferred["auto_selected"] else 1
+            ),
+            "intelligence": inferred,
             "no_model_call": True,
         }
     except CustomerUploadError:

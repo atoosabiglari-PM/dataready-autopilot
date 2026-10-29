@@ -15,6 +15,8 @@ from zipfile import BadZipFile, ZipFile
 
 from fastapi import UploadFile
 
+from app.services.layout_intelligence import detect_workbook_tables
+
 from app.tools.preflight import (
     MAX_CELL_LENGTH,
     MAX_COLUMNS,
@@ -39,6 +41,8 @@ class ImportDiagnostics:
     cached_formulas: int = 0
     selected_sheet: str | None = None
     selected_header_row: int = 1
+    layout_auto_selected: bool = False
+    layout_confidence: str | None = None
 
 
 def _scalar(value: Any) -> str:
@@ -115,7 +119,7 @@ def _convert_excel(
     diagnostics: ImportDiagnostics | None = None,
     *,
     sheet_name: str | None = None,
-    header_row: int = 1,
+    header_row: int | None = None,
 ) -> None:
     """Read saved formula results, never evaluate or execute Excel formulas.
 
@@ -138,7 +142,7 @@ def _convert_excel(
     except (BadZipFile, OSError) as error:
         raise CustomerUploadError("The XLSX workbook is unreadable.") from error
 
-    if not 1 <= header_row <= MAX_ROWS + 1:
+    if header_row is not None and not 1 <= header_row <= MAX_ROWS + 1:
         raise CustomerUploadError("The selected Excel header row is not supported.")
 
     try:
@@ -159,6 +163,30 @@ def _convert_excel(
         )
         if not formulas.worksheets or not calculated.worksheets:
             raise CustomerUploadError("The workbook contains no worksheets.")
+
+        detected_automatically = False
+        selected_confidence: str | None = None
+        if header_row is None:
+            applicable_sheets = (
+                [calculated[sheet_name]]
+                if sheet_name is not None and sheet_name in calculated.sheetnames
+                else calculated.worksheets
+                if sheet_name is None else []
+            )
+            if not applicable_sheets:
+                raise CustomerUploadError("The selected Excel worksheet was not found.")
+            layout = detect_workbook_tables(applicable_sheets)
+            if not layout["auto_selected"]:
+                raise CustomerUploadError(
+                    "DataReady found multiple possible tables or insufficient "
+                    "header evidence. Select the worksheet and header row to continue."
+                )
+            header_row = int(layout["recommended_header_row"])
+            selected_confidence = str(layout["confidence"])
+            if sheet_name is None:
+                sheet_name = str(layout["recommended_sheet"])
+            detected_automatically = True
+
         if sheet_name is not None:
             if sheet_name not in formulas.sheetnames:
                 raise CustomerUploadError("The selected Excel worksheet was not found.")
@@ -175,7 +203,16 @@ def _convert_excel(
         if diagnostics is not None:
             diagnostics.selected_sheet = worksheet.title
             diagnostics.selected_header_row = header_row
-            if sheet_name is not None or header_row != 1:
+            diagnostics.layout_auto_selected = detected_automatically
+            diagnostics.layout_confidence = selected_confidence
+            if detected_automatically:
+                diagnostics.warnings.append(
+                    f"DataReady automatically recognized the table on worksheet "
+                    f"{worksheet.title!r}, with column headers at row {header_row}. "
+                    f"{header_row - 1} introductory row(s) were excluded. "
+                    "You can override this selection if necessary."
+                )
+            elif sheet_name is not None or header_row != 1:
                 diagnostics.warnings.append(
                     f"Excel table: worksheet {worksheet.title!r}, header at row "
                     f"{header_row}. Rows above the header were excluded."
@@ -253,7 +290,7 @@ async def receive_customer_dataset(
     *,
     diagnostics: ImportDiagnostics | None = None,
     sheet_name: str | None = None,
-    header_row: int = 1,
+    header_row: int | None = None,
 ) -> Path:
     """Receive a bounded upload, normalize if needed, and return a local CSV.
 
@@ -285,7 +322,7 @@ async def receive_customer_dataset(
     if size == 0:
         raise CustomerUploadError("The uploaded file is empty.")
 
-    if extension != ".xlsx" and (sheet_name is not None or header_row != 1):
+    if extension != ".xlsx" and (sheet_name is not None or header_row not in (None, 1)):
         raise CustomerUploadError(
             "Worksheet and header-row settings are available for Excel files only."
         )

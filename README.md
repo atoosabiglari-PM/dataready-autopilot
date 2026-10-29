@@ -24,8 +24,9 @@ It supports **real user-supplied** CSV, flat JSON, and selectable-worksheet XLSX
 1. Upload your own bounded tabular dataset (10 MB / 100k rows / 200 columns).
 2. Audit actual file contents, detecting missing values, exact duplicates,
    PII-related risks, and other supported findings.
-   For XLSX, inspect the worksheet layout and choose the row containing actual
-   field names before interpreting quality scores.
+   For XLSX, DataReady first inspects workbook structure locally and automatically
+   selects a high-confidence worksheet/header row. If several tables look
+   plausible, it requests the customer's choice instead of guessing.
 3. With no access code, request **live NVIDIA Nemotron inference**
    on **Nebius Token Factory**, from minimized and aliased audit evidence.
 4. Independently check candidate policy; execute supported trials in isolated

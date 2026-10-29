@@ -60,6 +60,16 @@ def to_bytes(workbook):
     return result.getvalue()
 
 
+def test_numbered_record_values_are_not_scored_as_column_headers():
+    from app.services.layout_intelligence import _label_score
+
+    # These are record values, despite containing vocabulary such as
+    # "hotel", "address", or "value" that can also appear in real headers.
+    assert _label_score("Hotel 1") < _label_score("Hotel / motel")
+    assert _label_score("Address 14") < _label_score("Street address")
+    assert _label_score("value_0") < _label_score("Contact status")
+
+
 def test_manghal_style_notes_are_not_misread_as_header():
     workbook = hotel_directory_workbook()
     detection = detect_workbook_tables(workbook.worksheets)

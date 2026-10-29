@@ -28,7 +28,7 @@ COLUMN_LABELS = frozenset({
     "reservation", "owner", "team", "order", "identifier", "units",
     "model", "value", "year", "month", "day", "unit", "revenue",
 })
-WORD = re.compile(r"[A-Za-z]+")
+WORD = re.compile(r"[^\W\d_]+", re.UNICODE)  # Unicode letters, not just English
 URL = re.compile(r"^(?:https?://|www\.)", re.IGNORECASE)
 
 

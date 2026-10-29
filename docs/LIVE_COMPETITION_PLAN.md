@@ -35,7 +35,11 @@ The public-facing **DataReady Live** entrypoint is `app.live_product:app`,
 separate from the public replay service and existing Gemini service.
 
 1. Open the live app URL in a browser and see an actual file-upload UI.
-2. Choose a user-provided **CSV**, flat **JSON**, or **XLSX** worksheet.
+2. Choose a user-provided **CSV**, flat **JSON**, or **XLSX** workbook.
+   The layout detector should automatically distinguish introductory notes
+   and configuration rows from a well-supported data table. If uncertain,
+   the customer confirms the worksheet and header row; DataReady never silently
+   discards ambiguous tables. Structural inference is deterministic and local.
 3. Run the real deterministic audit; verify findings and score reflect that
    specific file, not a fixed demo dataset.
 4. Without signup, codes, or user-supplied provider keys, start the real

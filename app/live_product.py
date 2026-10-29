@@ -191,6 +191,19 @@ def _audit_public(report: AuditReport) -> dict[str, object]:
     }
 
 
+def _import_layout_public(info: ImportDiagnostics) -> dict[str, object] | None:
+    """Return structural import metadata, never raw worksheet values."""
+    if info.selected_sheet is None:
+        return None
+    return {
+        "sheet": info.selected_sheet,
+        "header_row": info.selected_header_row,
+        "leading_note_rows_skipped": max(0, info.selected_header_row - 1),
+        "automatically_detected": info.layout_auto_selected,
+        "confidence": info.layout_confidence,
+    }
+
+
 def _prepare_audit(source: Path) -> AuditReport:
     result = audit_csv(source)
     if not result.fingerprint_sha256 or result.fingerprint_sha256 != calculate_sha256(source):
@@ -321,7 +334,7 @@ async def workbook_layout(
 async def audit_upload(
     file: UploadFile = File(...),
     sheet_name: str | None = Form(None),
-    header_row: int = Form(1),
+    header_row: int | None = Form(None),
 ) -> dict[str, object]:
     """Any supported tabular dataset can be inspected without a model call."""
     try:
@@ -337,6 +350,7 @@ async def audit_upload(
                 "model_invoked": False,
                 "original_audit": _audit_public(before),
                 "import_warnings": import_diagnostics.warnings,
+                "import_layout": _import_layout_public(import_diagnostics),
                 "source_preserved": True,
                 "production_changes_applied": False,
             }
@@ -349,7 +363,7 @@ async def analyze_upload(
     request: Request,
     file: UploadFile = File(...),
     sheet_name: str | None = Form(None),
-    header_row: int = Form(1),
+    header_row: int | None = Form(None),
 ) -> dict[str, object]:
     """Live NVIDIA analysis with server-side quotas, not customer access codes."""
     try:
@@ -367,6 +381,7 @@ async def analyze_upload(
                     "model_invoked": False,
                     "original_audit": _audit_public(before),
                     "import_warnings": import_diagnostics.warnings,
+                    "import_layout": _import_layout_public(import_diagnostics),
                     "candidate_count": 0,
                     "candidates": [],
                     "recommendation": {
@@ -391,6 +406,7 @@ async def analyze_upload(
                     "model_invoked": False,
                     "original_audit": _audit_public(before),
                     "import_warnings": import_diagnostics.warnings,
+                    "import_layout": _import_layout_public(import_diagnostics),
                     "candidate_count": 0,
                     "candidates": [],
                     "recommendation": {
@@ -416,6 +432,7 @@ async def analyze_upload(
                     "model_invoked": False,
                     "original_audit": _audit_public(before),
                     "import_warnings": import_diagnostics.warnings,
+                    "import_layout": _import_layout_public(import_diagnostics),
                     "candidate_count": 0,
                     "candidates": [],
                     "recommendation": {
@@ -441,6 +458,7 @@ async def analyze_upload(
                 _evaluate_uploaded_data, source, before
             )
             result["import_warnings"] = import_diagnostics.warnings
+            result["import_layout"] = _import_layout_public(import_diagnostics)
             return result
     except CustomerUploadError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
@@ -491,7 +509,7 @@ async def export_approved_copy(
     approval_token: str = Form(...),
     consent: str = Form(...),
     sheet_name: str | None = Form(None),
-    header_row: int = Form(1),
+    header_row: int | None = Form(None),
 ) -> Response:
     """No customer codes; signed approval and fresh policy checks gate export."""
     if consent != "approve":

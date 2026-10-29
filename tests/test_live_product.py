@@ -213,8 +213,14 @@ def test_excel_without_saved_formula_values_audits_but_requires_recalculation(
     body = audit.json()
     assert body["original_audit"]["row_count"] == 2
     assert body["original_audit"]["duplicate_row_count"] == 1
-    assert len(body["import_warnings"]) == 1
-    assert "no saved calculated value" in body["import_warnings"][0]
+    assert any(
+        "automatically recognized" in warning.lower()
+        for warning in body["import_warnings"]
+    )
+    assert any(
+        "no saved calculated value" in warning
+        for warning in body["import_warnings"]
+    )
 
     response = client.post(
         "/api/analyze",
@@ -275,8 +281,14 @@ def test_excel_saved_formula_values_are_analyzed_without_formula_execution():
     assert result["original_audit"]["status"] == "READY"
     assert result["original_audit"]["row_count"] == 2
     assert result["original_audit"]["duplicate_row_count"] == 0
-    assert len(result["import_warnings"]) == 1
-    assert "saved results" in result["import_warnings"][0]
+    assert any(
+        "automatically recognized" in warning.lower()
+        for warning in result["import_warnings"]
+    )
+    assert any(
+        "saved results" in warning
+        for warning in result["import_warnings"]
+    )
 
 
 def test_missing_formula_results_cannot_be_exported(monkeypatch, authorized):

@@ -74,6 +74,13 @@ def _label_score(value: object) -> float:
         return 0.2
     if len(words) > 5:
         return 0.3
+    # Data rows commonly contain identifiers and labels with embedded numbers:
+    # "Hotel 1", "Address 14", "value_0". They are weak header evidence even
+    # when a word such as "hotel" or "address" also occurs in our vocabulary.
+    # Numeric or year-specific column labels can be confirmed manually if
+    # the surrounding structure is not sufficient.
+    if any(character.isdigit() for character in raw):
+        return 0.3
     tokens = {w.lower() for w in words}
     if tokens & COLUMN_LABELS:
         return 1.0

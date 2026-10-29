@@ -46,7 +46,11 @@ def test_excel_layout_preview_lists_sheets_and_row_numbers_without_model(monkeyp
     assert "no-store" in response.headers["cache-control"]
     info = response.json()
     assert info["no_model_call"] is True
-    assert info["default_sheet"] == "Instructions"
+    assert info["default_sheet"] == "Hotel Data"
+    assert info["default_header_row"] == 3
+    assert info["intelligence"]["auto_selected"] is True
+    assert info["intelligence"]["confidence"] == "high"
+    assert info["intelligence"]["no_ai_call"] is True
     assert [sheet["name"] for sheet in info["sheets"]] == [
         "Instructions", "Hotel Data",
     ]

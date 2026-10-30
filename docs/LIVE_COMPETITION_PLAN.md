@@ -5,10 +5,13 @@
 export, and downloaded CSV fingerprint were verified. Public deployment and
 the hosted sample API workflow also passed, including signed guest access,
 live NVIDIA inference, approval enforcement, and matching export fingerprint.
-The final hosted browser walkthrough and demo recording remain pending.
+The developer also completed the hosted browser walkthrough; its downloaded
+CSV was independently matched to the supplied trial evidence. Demo recording
+and submission remain pending.
 
 **Public live app:** https://dataready-live-350298872740.us-west1.run.app  
 **Hosted evidence:** [October 29 sample run](evidence/2026-10-29-hosted-sample.json)
+**Browser verification:** [October 29 browser run](evidence/2026-10-29-browser-sample.json)
 
 **Official rules:** https://nebiusglobalaihackathon.devpost.com/rules  
 **FAQ:** https://nebiusglobalaihackathon.devpost.com/details/faqs  
@@ -249,7 +252,8 @@ into the video as if it were fresh inference.
 - [x] Deploy the separate **dataready-live** service and verify a real synthetic
       sample upload, NVIDIA call, independent trial, approval enforcement, and
       matching CSV export through its HTTP API.
-- [ ] Complete the final hosted browser walkthrough, including CSV download.
+- [x] Complete the final hosted browser walkthrough, including CSV download;
+      independently verify the uploaded CSV against the selected trial fingerprint.
 - [x] Update the competition branch README to prominently describe the live
       customer product, setup, observed verification, and known limitations.
 - [ ] Check the submitted repository link opens the competition implementation

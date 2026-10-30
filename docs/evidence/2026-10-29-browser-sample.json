@@ -1,0 +1,99 @@
+{
+  "verified_at_utc": "2026-10-30T03:27:53.838946+00:00",
+  "public_app_url": "https://dataready-live-350298872740.us-west1.run.app",
+  "verification_method": "Developer reported completing the public browser workflow and supplied downloaded evidence JSON and CSV; CSV bytes were independently checked against the selected candidate fingerprint.",
+  "dataset": "Synthetic built-in example-inventory.csv; no customer data",
+  "checks": {
+    "model_invoked": true,
+    "candidate_count": 1,
+    "source_sha256": "a70bcbeb1a41d62f6bffb4896acb2758992a5c97abb4ddb9cc43b7473f4347b2",
+    "export_sha256": "1ae42f08eeac9adb8ef3d3bf0fa64857eb8be4bf39c11016b544c6f5e772d2cc",
+    "trial_fingerprint_matches_download": true,
+    "export_rows": 3,
+    "duplicate_rows": 0,
+    "blank_categories": 1,
+    "export_csv_utf8": "item,category\nA,tools\nB,\nC,parts\n"
+  },
+  "analysis_evidence": {
+    "mode": "LIVE_NVIDIA",
+    "model_invoked": true,
+    "provider": "Nebius Token Factory",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "original_audit": {
+      "status": "QUARANTINED",
+      "quality_score": 80,
+      "row_count": 4,
+      "column_count": 2,
+      "duplicate_row_count": 1,
+      "fingerprint_sha256": "a70bcbeb1a41d62f6bffb4896acb2758992a5c97abb4ddb9cc43b7473f4347b2",
+      "risk_flags": [],
+      "issues": [
+        {
+          "code": "MISSING_VALUES",
+          "severity": "WARNING",
+          "column": "category",
+          "count": 1
+        },
+        {
+          "code": "DUPLICATE_ROWS",
+          "severity": "WARNING",
+          "column": null,
+          "count": 1
+        }
+      ]
+    },
+    "candidate_count": 1,
+    "candidates": [
+      {
+        "candidate_id": "cand_1",
+        "actions": [
+          {
+            "action": "STANDARDIZE_MISSING_MARKERS",
+            "columns": [
+              "category"
+            ]
+          },
+          {
+            "action": "REMOVE_EXACT_DUPLICATES",
+            "columns": []
+          }
+        ],
+        "policy_status": "APPROVED",
+        "evaluation_status": "NO_AUDIT_REGRESSION",
+        "disposition": "IMPROVING",
+        "reason": "Measured audit improvement with no detected audit regression.",
+        "audit_after": {
+          "status": "QUARANTINED",
+          "quality_score": 90,
+          "row_count": 3,
+          "column_count": 2,
+          "duplicate_row_count": 0,
+          "fingerprint_sha256": "1ae42f08eeac9adb8ef3d3bf0fa64857eb8be4bf39c11016b544c6f5e772d2cc",
+          "risk_flags": [],
+          "issues": [
+            {
+              "code": "MISSING_VALUES",
+              "severity": "WARNING",
+              "column": "category",
+              "count": 1
+            }
+          ]
+        },
+        "regressions": []
+      }
+    ],
+    "recommendation": {
+      "status": "RECOMMENDED",
+      "candidate_id": "cand_1",
+      "shortlist": [
+        "cand_1"
+      ],
+      "message": "One improving candidate leads on the measured evidence; release is not authorized."
+    },
+    "source_preserved": true,
+    "production_changes_applied": false,
+    "original_rows_sent_to_ai": false,
+    "import_warnings": [],
+    "import_layout": null
+  }
+}

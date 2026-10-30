@@ -54,7 +54,10 @@ HTTP 403. The downloaded CSV matched the trial fingerprint above: three rows,
 zero duplicates, and one category still blank. The hosted model returned one
 candidate combining missing-marker normalization and exact-duplicate removal.
 [Sanitized hosted evidence](docs/evidence/2026-10-29-hosted-sample.json) records
-this run. The final hosted browser walkthrough and demo recording remain pending.
+this run. The hosted browser walkthrough also passed: the developer uploaded
+the downloaded evidence JSON and CSV, and the CSV exactly matched the selected
+trial's fingerprint. [Browser verification](docs/evidence/2026-10-29-browser-sample.json)
+records the one-candidate result. The demo recording remains pending.
 
 The competition implementation is on
 [`feature/competing-repair-candidates`](https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates).

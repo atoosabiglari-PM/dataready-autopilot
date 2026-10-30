@@ -1,8 +1,9 @@
 # DataReady — submission draft
 
 Status: updated October 29, 2026. Public deployment and the hosted sample API
-workflow passed. The final browser walkthrough, video upload, and Devpost
-submission remain pending. Replace the pending video link before submitting.
+workflow passed. The hosted browser walkthrough and downloaded files were also
+verified. Video upload and Devpost submission remain pending. Replace the
+pending video link before submitting.
 
 ## Submission fields
 
@@ -68,9 +69,13 @@ HTTP API. The earlier Gemini / Google ADK path remains a separate provider optio
   API with a signed guest session. Its one candidate combined missing-marker
   normalization and duplicate removal, producing the same three-row CSV.
   Export without approval returned HTTP 403; approved export matched the
-  trial fingerprint. The final hosted browser walkthrough remains pending.
+  trial fingerprint.
+- The developer completed the hosted browser workflow and supplied its evidence
+  JSON and downloaded CSV. Independent byte verification confirmed three rows,
+  zero duplicates, one blank category, and an exact match to the trial fingerprint.
 
 Sanitized hosted evidence: [October 29 sample run](evidence/2026-10-29-hosted-sample.json).
+Browser download verification: [October 29 browser run](evidence/2026-10-29-browser-sample.json).
 
 These observations establish the sample workflow, not general data correctness
 or production readiness. The live model is not required to return a fixed number
@@ -134,7 +139,8 @@ workbook was repaired. Use the public app linked above for the recording.
 ## Final completion checklist
 
 - [x] Deploy the public live app and verify the sample API workflow; add its URL.
-- [ ] Complete the hosted browser walkthrough, including approval and download.
+- [x] Complete the hosted browser walkthrough, including approval and download;
+      verify the downloaded CSV against its evidence fingerprint.
 - [ ] Verify the submitted source link and setup instructions in a fresh browser.
 - [ ] Check judge testing access, provider credits, and quota availability.
 - [ ] Record, upload publicly to YouTube, and replace the pending video link.

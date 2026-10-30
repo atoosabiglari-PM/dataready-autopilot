@@ -178,7 +178,7 @@ def recommend_candidate_batch(
                     and trial.audit_after.row_count == first_after.row_count
                     and trial.audit_after.column_count == first_after.column_count
                     and trial.audit_after.duplicate_row_count == first_after.duplicate_row_count
-                    and trial.audit_after.risk_flags == first_after.risk_flags
+                    and trial.audit_after.preflight.risk_flags == first_after.preflight.risk_flags
                     and _profile(trial.audit_after) == _profile(first_after)
                     for trial in finalists
                 )

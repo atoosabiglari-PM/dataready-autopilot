@@ -143,8 +143,11 @@ for name in "$NEBIUS_SECRET" "$SIGNING_SECRET"; do
 done
 
 printf '\nBuilding and deploying the NEW public dataready-live service...\n'
+# Python 3.12 requires the google-22 stack; the default google-24 builder
+# does not provide it. Keep runtime updates tied to explicit deployments.
 gcloud run deploy "$SERVICE" \
   --project="$PROJECT" --source=. --region="$REGION" \
+  --base-image=python312 --no-automatic-updates \
   --service-account="$RUNTIME_ACCOUNT" \
   --allow-unauthenticated \
   --min-instances=0 --max-instances=1 \

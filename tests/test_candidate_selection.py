@@ -137,6 +137,52 @@ def test_tied_audit_results_require_human_choice(tmp_path):
     assert result.recommended_candidate_id is None
 
 
+def test_identical_repaired_bytes_choose_strictly_simpler_plan(tmp_path):
+    """Real isolated trials, not a mocked tie: same bytes, fewer actions win."""
+    missing = RepairAction.STANDARDIZE_MISSING_MARKERS
+    source, batch, policy = real_setup(
+        tmp_path,
+        [
+            ("combined", [(missing, ["category"]), (DEDUPE, [])]),
+            ("dedupe", [(DEDUPE, [])]),
+        ],
+        "item,category\nA,tools\nA,tools\nB,\nC,parts\n",
+    )
+    before = source.read_bytes()
+    result = recommend(source, batch, policy)
+    assert result.status == "RECOMMENDED"
+    assert result.recommended_candidate_id == "dedupe"
+    assert result.shortlisted_candidate_ids == ("dedupe",)
+    assert "identical repaired bytes" in result.message
+    assert "simpler" in result.message
+    assert [r.disposition for r in result.rows] == ["IMPROVING", "IMPROVING"]
+    trials = [evaluation.trial for evaluation in result.evaluations]
+    assert trials[0].output_fingerprint_sha256 == trials[1].output_fingerprint_sha256
+    assert all(trial.audit_after.quality_score == 90 for trial in trials)
+    assert all(trial.audit_after.duplicate_row_count == 0 for trial in trials)
+    assert source.read_bytes() == before
+
+
+def test_same_audit_score_but_different_repaired_bytes_still_requires_review(tmp_path):
+    """Two verifiably different files must not be collapsed just for equal scores."""
+    source, batch, policy = real_setup(
+        tmp_path,
+        [
+            ("dedupe", [(DEDUPE, [])]),
+            ("trim_and_dedupe", [(TRIM, ["item"]), (DEDUPE, [])]),
+        ],
+        "item,category\n A ,tools\n A ,tools\nB,parts\n",
+    )
+    result = recommend(source, batch, policy)
+    assert result.status == "HUMAN_CHOICE_REQUIRED"
+    assert result.recommended_candidate_id is None
+    assert result.evaluations[0].trial.audit_after.quality_score == 90
+    assert result.evaluations[1].trial.audit_after.quality_score == 90
+    assert result.evaluations[0].trial.output_fingerprint_sha256 != (
+        result.evaluations[1].trial.output_fingerprint_sha256
+    )
+
+
 def test_recommendation_can_still_have_unresolved_findings(tmp_path):
     source, batch, policy = real_setup(
         tmp_path, [("dedupe", [(DEDUPE, [])])],

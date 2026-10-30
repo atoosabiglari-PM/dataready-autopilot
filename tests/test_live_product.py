@@ -147,6 +147,83 @@ def test_live_nvidia_uses_uploaded_data_and_returns_verified_candidates(
     assert body["production_changes_applied"] is False
 
 
+def test_equivalent_nvidia_candidates_recommend_simpler_and_export(
+    monkeypatch, authorized
+):
+    """The live API signs only the simplest independently identical result."""
+    def equivalent_batch(report):
+        fingerprint = report.fingerprint_sha256
+        assert fingerprint is not None
+        return CandidateBatch(
+            source_fingerprint_sha256=fingerprint,
+            candidates=[
+                RepairCandidate(
+                    candidate_id="combined",
+                    repair_plan=RepairPlan(
+                        source_fingerprint_sha256=fingerprint,
+                        summary="Normalize missing markers and remove duplicates.",
+                        actions=[
+                            ProposedRepair(
+                                action=RepairAction.STANDARDIZE_MISSING_MARKERS,
+                                justification="Normalize category empties.",
+                                columns=["category"],
+                            ),
+                            ProposedRepair(
+                                action=RepairAction.REMOVE_EXACT_DUPLICATES,
+                                justification="Remove exact duplicate rows.",
+                                columns=[],
+                            ),
+                        ],
+                    ),
+                ),
+                RepairCandidate(
+                    candidate_id="dedupe",
+                    repair_plan=RepairPlan(
+                        source_fingerprint_sha256=fingerprint,
+                        summary="Only remove exact duplicates.",
+                        actions=[
+                            ProposedRepair(
+                                action=RepairAction.REMOVE_EXACT_DUPLICATES,
+                                justification="Remove exact duplicates.",
+                                columns=[],
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        )
+
+    monkeypatch.setattr(live_product, "propose_nebius_candidates", equivalent_batch)
+    monkeypatch.setattr(live_product, "reserve_public_inference", lambda _guest: None)
+    result = client.post("/api/analyze", files=upload(), headers=authorized)
+    assert result.status_code == 200, result.text
+    body = result.json()
+    assert body["recommendation"]["status"] == "RECOMMENDED"
+    assert body["recommendation"]["candidate_id"] == "dedupe"
+    assert "simpler" in body["recommendation"]["message"]
+    assert len(body["candidates"]) == 2
+    assert all(candidate["disposition"] == "IMPROVING"
+               for candidate in body["candidates"])
+    assert body["candidates"][0]["audit_after"]["fingerprint_sha256"] == (
+        body["candidates"][1]["audit_after"]["fingerprint_sha256"]
+    )
+    assert body["source_preserved"] is True
+    token = body["approval_token"]
+    assert token is not None
+
+    # The user explicitly approves, then the entire choice is revalidated
+    # before exporting a separate repaired CSV. No background source changes.
+    exported = client.post(
+        "/api/export",
+        files=upload(),
+        data={"approval_token": token, "consent": "approve"},
+        headers=authorized,
+    )
+    assert exported.status_code == 200, exported.text
+    assert exported.content == b"item,category\\nA,tools\\nB,\\nC,parts\\n"
+    assert b"A,tools\\nA,tools" in CSV
+
+
 def test_json_records_are_not_replaced_with_a_fixed_demo(monkeypatch):
     raw = b'[{"product":"K","availability":"yes"},{"product":"K","availability":"yes"}]'
     response = client.post("/api/audit", files=upload(raw, "customer.json"))

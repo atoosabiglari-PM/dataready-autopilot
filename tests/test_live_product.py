@@ -220,8 +220,8 @@ def test_equivalent_nvidia_candidates_recommend_simpler_and_export(
         headers=authorized,
     )
     assert exported.status_code == 200, exported.text
-    assert exported.content == b"item,category\\nA,tools\\nB,\\nC,parts\\n"
-    assert b"A,tools\\nA,tools" in CSV
+    assert exported.content == b"item,category\nA,tools\nB,\nC,parts\n"
+    assert b"A,tools\nA,tools" in CSV
 
 
 def test_json_records_are_not_replaced_with_a_fixed_demo(monkeypatch):

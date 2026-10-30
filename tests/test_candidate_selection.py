@@ -176,8 +176,9 @@ def test_same_audit_score_but_different_repaired_bytes_still_requires_review(tmp
     result = recommend(source, batch, policy)
     assert result.status == "HUMAN_CHOICE_REQUIRED"
     assert result.recommended_candidate_id is None
-    assert result.evaluations[0].trial.audit_after.quality_score == 90
-    assert result.evaluations[1].trial.audit_after.quality_score == 90
+    # Both outputs have no remaining audit findings, but their bytes differ.
+    assert result.evaluations[0].trial.audit_after.quality_score == 100
+    assert result.evaluations[1].trial.audit_after.quality_score == 100
     assert result.evaluations[0].trial.output_fingerprint_sha256 != (
         result.evaluations[1].trial.output_fingerprint_sha256
     )

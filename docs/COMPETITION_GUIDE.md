@@ -1,5 +1,9 @@
 # DataReady Autopilot — Competition Guide
 
+> Legacy Gemini/Google ADK architecture reference. For the current Nebius × NVIDIA
+> competition app, use the [live product plan](LIVE_COMPETITION_PLAN.md),
+> [human-review workflow](HUMAN_REVIEW.md), and [submission draft](DEVPOST_SUBMISSION_DRAFT.md).
+
 ## Governed Data Readiness Before Enterprise Data Enters AI
 
 DataReady Autopilot demonstrates a simple architectural principle:

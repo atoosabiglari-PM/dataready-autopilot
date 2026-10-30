@@ -11,10 +11,10 @@ from fastapi import FastAPI, Header, HTTPException
 
 from app.core.policy import DatasetPolicy, RepairAction
 from app.services.autopilot import run_autopilot
-from app.showcase import router as showcase_router
 from app.services.candidate_selection import recommend_candidate_batch
 from app.services.nebius_candidates import MODEL as NEBIUS_MODEL
 from app.services.nebius_candidates import NebiusCandidateError, propose_nebius_candidates
+from app.showcase import router as showcase_router
 from app.tools.audit import audit_csv
 from app.tools.fingerprint import calculate_sha256
 

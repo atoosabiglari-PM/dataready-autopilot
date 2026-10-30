@@ -1,8 +1,9 @@
 # Human review and coordinate detection
 
-The review update is tested locally and must be redeployed to `dataready-live`
-before the new controls appear on the public site. The earlier public sample
-verification remains evidence for the prior deployed revision.
+The review update is deployed to `dataready-live`. The public page serves the
+new controls, and hosted API verification passed for both scoped human review
+and the existing live NVIDIA sample repair/export workflow. The owner's hotel
+review in the updated browser UI remains pending.
 
 ## Workflow
 
@@ -51,7 +52,7 @@ must reproduce the fresh trial's fingerprint.
 Local validation on October 29, 2026:
 
 - **393 automated tests passed**, including 38 new review/coordinate cases.
-- Changed Python files pass Ruff. Unrelated legacy lint findings remain.
+- The full repository passes Ruff; legacy lint findings were corrected.
 - DOM integration exercised the visible review controls, consent, recheck,
   continuation, separate export approval, token-free evidence, reset, and
   invalidation after edits. Its model response was a test fixture, not live inference.
@@ -59,7 +60,14 @@ Local validation on October 29, 2026:
   the Longitude phone-pattern false positive. Test declarations completed review
   without changing source bytes. These test declarations need the owner's
   confirmation in the public UI; they are not an owner approval record.
-- A rendered-browser check and hosted verification of this update remain pending.
+- Hosted synthetic review returned `REVIEW_COMPLETE`, accepted only the declared
+  public-phone and optional-notes findings, preserved the source fingerprint,
+  and did not call the model or issue a repair approval. Longitude was not flagged.
+  [Synthetic review evidence](evidence/2026-10-29-hosted-human-review.json).
+- The hosted sample made a real NVIDIA call and passed independent trial and
+  approved export again. Unapproved export returned 403; the approved CSV matched
+  the trial fingerprint. [Sanitized evidence](evidence/2026-10-29-hosted-review-update-sample.json).
+- A rendered-browser check and owner-confirmed hotel review remain pending.
 
 ## Hotel recording setup
 

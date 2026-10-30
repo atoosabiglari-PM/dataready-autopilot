@@ -313,8 +313,8 @@ def test_excel_without_saved_formula_values_audits_but_requires_recalculation(
 
 def test_excel_saved_formula_values_are_analyzed_without_formula_execution():
     """Simulate an Excel-saved cached result, not an openpyxl-calculated value."""
-    from zipfile import ZipFile
     import xml.etree.ElementTree as ET
+    from zipfile import ZipFile
 
     openpyxl = pytest.importorskip("openpyxl")
     wb = openpyxl.Workbook()
@@ -337,14 +337,14 @@ def test_excel_saved_formula_values_are_analyzed_without_formula_execution():
                     ET.register_namespace("", namespace)
                     document = ET.fromstring(data)
                     cell = document.find(
-                        ".//{%s}c[@r='B2']" % namespace
+                        f".//{{{namespace}}}c[@r='B2']"
                     )
                     assert cell is not None
-                    formula = cell.find("{%s}f" % namespace)
+                    formula = cell.find(f"{{{namespace}}}f")
                     assert formula is not None and formula.text == "2+2"
-                    cached = cell.find("{%s}v" % namespace)
+                    cached = cell.find(f"{{{namespace}}}v")
                     if cached is None:
-                        cached = ET.SubElement(cell, "{%s}v" % namespace)
+                        cached = ET.SubElement(cell, f"{{{namespace}}}v")
                     cached.text = "4"
                     data = ET.tostring(document, encoding="utf-8")
                 target_archive.writestr(info, data)
@@ -570,7 +570,7 @@ def test_approval_token_expires(monkeypatch, authorized):
 
 
 def test_replay_app_and_gemini_api_are_not_changed():
-    from app import web, public_showcase
+    from app import public_showcase, web
     assert client.get("/health").json()["service"] == "dataready-live"
     assert TestClient(web.app).get("/health").status_code == 200
     assert TestClient(public_showcase.app).get("/health").status_code == 200

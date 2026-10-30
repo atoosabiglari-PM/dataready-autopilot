@@ -27,6 +27,8 @@ It supports **real user-supplied** CSV, flat JSON, and selectable-worksheet XLSX
    For XLSX, DataReady first inspects workbook structure locally and automatically
    selects a high-confidence worksheet/header row. If several tables look
    plausible, it requests the customer's choice instead of guessing.
+   Use **Review findings and recheck** to record supported public-contact and
+   optional-field declarations. Unresolved critical findings still block AI planning.
 3. With no access code, request **live NVIDIA Nemotron inference**
    on **Nebius Token Factory**, from minimized and aliased audit evidence.
 4. Independently check candidate policy; execute supported trials in isolated
@@ -37,7 +39,7 @@ It supports **real user-supplied** CSV, flat JSON, and selectable-worksheet XLSX
 7. Download JSON evidence in the browser. Unmodified original files remain
    on the user's machine.
 
-**Verified locally on October 29, 2026:** all **355 tests passed**. The customer
+**Earlier local checkpoint on October 29, 2026:** **355 tests passed**. The customer
 UI completed a real Nebius / NVIDIA call, isolated repair trial, explicit user
 approval, and CSV download. In the four-row sample, one exact duplicate was
 removed, the quality score changed from 80 to 90, and the unresolved blank
@@ -59,15 +61,19 @@ the downloaded evidence JSON and CSV, and the CSV exactly matched the selected
 trial's fingerprint. [Browser verification](docs/evidence/2026-10-29-browser-sample.json)
 records the one-candidate result. The demo recording remains pending.
 
-The competition implementation is on
+The default `main` branch contains the current competition implementation. Development continues on
 [`feature/competing-repair-candidates`](https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates).
 
-**Review update, locally verified:** **393 tests passed**. The upload UI now
+**Review update, deployed and API-verified:** **393 tests passed locally**. The upload UI now
 includes **Review findings and recheck**, with recorded declarations for public
 business contacts and optional blanks, signed file/table scope, and fresh checks
 before analysis/export. Valid latitude/longitude values no longer trigger partial
-phone matches. This update must be redeployed and checked on the public app before
-recording. See [the review workflow and validation](docs/HUMAN_REVIEW.md).
+phone matches. A hosted synthetic review preserved the file fingerprint and
+made no model call. The live sample NVIDIA/trial/approved-export workflow passed
+again after this deployment, with the same matching three-row CSV.
+[Current hosted evidence](docs/evidence/2026-10-29-hosted-review-update-sample.json).
+The owner's hotel review in the updated browser UI and recording remain pending.
+See [the review workflow and validation](docs/HUMAN_REVIEW.md).
 
 ### Known limitations
 
@@ -87,7 +93,6 @@ recording. See [the review workflow and validation](docs/HUMAN_REVIEW.md).
   proposals and measured results are displayed; a repair is not guaranteed.
 - Excel formula results are read from saved caches and may be stale. Missing
   cached results prevent planning and export until recalculation and saving.
-- Changed Python files pass Ruff; unrelated legacy lint findings remain.
 
 ### Launch the real live product locally
 
@@ -838,23 +843,26 @@ for the full deployment procedure.
 
 Run Ruff:
 
-```powershell
-ruff check .
+```bash
+./.venv/bin/python -m ruff check .
 ```
 
 Run the full test suite:
 
-```powershell
-pytest -q -p no:cacheprovider --basetemp="$env:TEMP\dataready-autopilot-pytest-final"
+```bash
+./.venv/bin/python -m pytest -q
 ```
 
 Current verified regression:
 
 ```text
-94 passed
+393 passed
 ```
 
-The remaining warning is a non-blocking Google ADK deprecation warning.
+The full repository passes Ruff. GitHub's **Python checks** workflow runs lint,
+the test suite, and deployment-script syntax checks on pushes and pull requests,
+without provider credentials or cloud deployment. Test output may include a
+third-party pytest deprecation warning; it does not indicate a failed test.
 
 ---
 

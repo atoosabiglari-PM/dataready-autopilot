@@ -1,0 +1,121 @@
+{
+  "verified_at_utc": "2026-10-30T04:33:14.822028+00:00",
+  "public_url": "https://dataready-live-350298872740.us-west1.run.app",
+  "method": "Hosted HTTP API; signed anonymous session; synthetic inventory only",
+  "observed_source_commit": "196de756b557dadb3d924e565da0fa716829afec",
+  "commit_note": "User reported deployment complete; live HTML matches the review update. Cloud Run revision metadata was not queried.",
+  "homepage_checks": {
+    "review_controls_present": true,
+    "chatgpt_text_absent": true,
+    "tracking_parameter_absent": true
+  },
+  "analysis": {
+    "mode": "LIVE_NVIDIA",
+    "model_invoked": true,
+    "provider": "Nebius Token Factory",
+    "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "original_audit": {
+      "status": "QUARANTINED",
+      "quality_score": 80,
+      "row_count": 4,
+      "column_count": 2,
+      "duplicate_row_count": 1,
+      "fingerprint_sha256": "a70bcbeb1a41d62f6bffb4896acb2758992a5c97abb4ddb9cc43b7473f4347b2",
+      "risk_flags": [],
+      "reviewed_findings": [],
+      "issues": [
+        {
+          "code": "MISSING_VALUES",
+          "severity": "WARNING",
+          "column": "category",
+          "count": 1
+        },
+        {
+          "code": "DUPLICATE_ROWS",
+          "severity": "WARNING",
+          "column": null,
+          "count": 1
+        }
+      ]
+    },
+    "candidate_count": 1,
+    "candidates": [
+      {
+        "candidate_id": "c1",
+        "actions": [
+          {
+            "action": "REMOVE_EXACT_DUPLICATES",
+            "columns": []
+          },
+          {
+            "action": "STANDARDIZE_MISSING_MARKERS",
+            "columns": [
+              "category"
+            ]
+          }
+        ],
+        "policy_status": "APPROVED",
+        "evaluation_status": "NO_AUDIT_REGRESSION",
+        "disposition": "IMPROVING",
+        "reason": "Measured audit improvement with no detected audit regression.",
+        "audit_after": {
+          "status": "QUARANTINED",
+          "quality_score": 90,
+          "row_count": 3,
+          "column_count": 2,
+          "duplicate_row_count": 0,
+          "fingerprint_sha256": "1ae42f08eeac9adb8ef3d3bf0fa64857eb8be4bf39c11016b544c6f5e772d2cc",
+          "risk_flags": [],
+          "reviewed_findings": [],
+          "issues": [
+            {
+              "code": "MISSING_VALUES",
+              "severity": "WARNING",
+              "column": "category",
+              "count": 1
+            }
+          ]
+        },
+        "regressions": []
+      }
+    ],
+    "recommendation": {
+      "status": "RECOMMENDED",
+      "candidate_id": "c1",
+      "shortlist": [
+        "c1"
+      ],
+      "message": "One improving candidate leads on the measured evidence; release is not authorized."
+    },
+    "source_preserved": true,
+    "production_changes_applied": false,
+    "original_rows_sent_to_ai": false,
+    "import_warnings": [],
+    "import_layout": null,
+    "review": {
+      "status": "NOT_REVIEWED",
+      "decisions": null,
+      "options": {
+        "public_contact_columns": [],
+        "optional_columns": [
+          "category"
+        ]
+      },
+      "accepted_findings": [],
+      "blocking_findings": [],
+      "source_fingerprint_sha256": "a70bcbeb1a41d62f6bffb4896acb2758992a5c97abb4ddb9cc43b7473f4347b2",
+      "data_values_changed": false,
+      "meaning": "Reviewer declarations supply business context; they do not repair values or certify correctness."
+    }
+  },
+  "export": {
+    "unapproved_http": 403,
+    "approved_http": 200,
+    "sha256": "1ae42f08eeac9adb8ef3d3bf0fa64857eb8be4bf39c11016b544c6f5e772d2cc",
+    "matches_trial": true,
+    "rows": 3,
+    "duplicates": 0,
+    "blank_category_preserved": true
+  },
+  "limits": "API verification only. Current-revision hotel browser review and video remain pending."
+}

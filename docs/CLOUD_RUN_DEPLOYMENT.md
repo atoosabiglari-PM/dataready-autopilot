@@ -1,5 +1,9 @@
 # DataReady Autopilot — Google Cloud Deployment
 
+> These instructions describe the separate legacy Gemini service. For the current
+> `dataready-live` competition application, use [the live deployment plan](LIVE_COMPETITION_PLAN.md)
+> and `bash scripts/deploy_dataready_live.sh` from the repository root.
+
 ## Live Service
 
 DataReady Autopilot is deployed on Google Cloud Run.

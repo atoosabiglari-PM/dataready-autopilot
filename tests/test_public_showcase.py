@@ -2,10 +2,10 @@
 
 from fastapi.testclient import TestClient
 
-from app.public_showcase import app
 from app import web
-from app.tools.fingerprint import calculate_sha256
+from app.public_showcase import app
 from app.showcase import SHOWCASE_SOURCE
+from app.tools.fingerprint import calculate_sha256
 
 client = TestClient(app)
 

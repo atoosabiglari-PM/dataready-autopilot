@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import Lock
 
 DEFAULT_GLOBAL_DAILY_LIMIT = 50
@@ -123,7 +123,7 @@ def reserve_public_inference(session_id: str) -> None:
             "Public NVIDIA analysis has not been enabled for this cloud service."
         )
 
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     # Do not store the browser session identifier in Firestore.
     hashed = hashlib.sha256(session_id.encode("utf-8")).hexdigest()
     if hosted:

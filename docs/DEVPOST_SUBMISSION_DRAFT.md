@@ -5,15 +5,16 @@ workflow passed. The hosted browser walkthrough and downloaded files were also
 verified. Video upload and Devpost submission remain pending. Replace the
 pending video link before submitting.
 
-The subsequent human-review/coordinate update passed local validation but needs
-redeployment and a hosted check before its new behavior is recorded or submitted.
+The human-review/coordinate update is deployed. Hosted synthetic review and a
+fresh live NVIDIA sample repair/export passed. The owner's hotel review in the
+updated browser UI remains pending.
 
 ## Submission fields
 
 - **Project name:** DataReady
 - **Tagline:** AI proposes data repairs. Independent checks verify them. You approve the export.
 - **Track:** Best Apps and Agents
-- **Source:** https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates
+- **Source:** https://github.com/atoosabiglari-PM/dataready-autopilot
 - **Working application:** https://dataready-live-350298872740.us-west1.run.app
 - **Public YouTube video:** PENDING — keep the recording under three minutes.
 - **License:** Apache-2.0, in the repository's LICENSE file.
@@ -64,6 +65,7 @@ HTTP API. The earlier Gemini / Google ADK path remains a separate provider optio
 ## Verified results
 
 - The complete current automated suite passed locally: **393 tests**.
+- The full repository passes Ruff.
 - A real local customer-UI run called NVIDIA Nemotron through Nebius Token Factory.
 - The sample contained four rows, one exact duplicate, and one missing category.
 - The local run returned one candidate: remove the exact duplicate.
@@ -83,6 +85,9 @@ HTTP API. The earlier Gemini / Google ADK path remains a separate provider optio
 
 Sanitized hosted evidence: [October 29 sample run](evidence/2026-10-29-hosted-sample.json).
 Browser download verification: [October 29 browser run](evidence/2026-10-29-browser-sample.json).
+After the review update: [fresh hosted sample verification](evidence/2026-10-29-hosted-review-update-sample.json).
+The hosted synthetic review check also preserved the file fingerprint, recorded
+the scoped declarations, and completed without a model call or data repair.
 
 These observations establish the sample workflow, not general data correctness
 or production readiness. The live model is not required to return a fixed number
@@ -95,7 +100,9 @@ competition window, the project added the NVIDIA / Nebius integration, multiple
 candidate support, isolated candidate trials, regression-aware comparison,
 equivalent-output selection, the real customer-upload interface, CSV/JSON/XLSX
 import, worksheet/header detection, signed approval and revalidated export, and
-public inference quota controls. The final submission should point to the exact
+public inference quota controls. It also adds scoped human-review declarations,
+coordinate range validation, and export checks against the fresh trial fingerprint.
+The final submission should point to the exact
 competition branch/commit used in the demonstration.
 
 ## Challenges and limitations
@@ -134,10 +141,10 @@ and NVIDIA model behavior exercised here.
 | Time | Show | Explain |
 | --- | --- | --- |
 | 0:00–0:20 | DataReady live upload page | The problem: verifiable AI-assisted data repair |
-| 0:20–0:45 | Upload a harmless sample and inspect findings | Actual input, duplicate count, unresolved missing value |
-| 0:45–1:15 | Run live NVIDIA analysis | Nebius runtime call; minimized evidence; no raw rows |
-| 1:15–1:50 | Actual candidate cards and trial evidence | Policy, before/after measurements, remaining findings |
-| 1:50–2:15 | Approve and download the CSV and evidence | Separate output; source preservation; verified fingerprint |
+| 0:20–1:00 | Hotel directory, header row 8; review actual findings | Record confirmed business context; leave blanks unchanged; no model call or repair if no findings remain |
+| 1:00–1:15 | Load the built-in sample | Judges can try this sample; it contains a duplicate and a missing category |
+| 1:15–1:55 | Run live NVIDIA analysis and inspect actual trial evidence | Nebius runtime call, minimized evidence, measured changes and remaining findings |
+| 1:55–2:15 | Approve and download the sample CSV and evidence | Separate output; source preservation; verified fingerprint |
 | 2:15–2:30 | Brief architecture and limits | Provider-independent core and concrete next improvements |
 
 Record actual behavior. If only one candidate is returned, describe one.
@@ -149,8 +156,9 @@ workbook was repaired. Use the public app linked above for the recording.
 - [x] Deploy the public live app and verify the sample API workflow; add its URL.
 - [x] Complete the hosted browser walkthrough, including approval and download;
       verify the downloaded CSV against its evidence fingerprint.
-- [ ] Redeploy the subsequent review/coordinate update and verify the hotel review
-      and sample export on the new public revision.
+- [x] Deploy the review/coordinate update and verify scoped review and live sample
+      export through the public HTTP API.
+- [ ] Complete owner-confirmed hotel review in the updated browser UI.
 - [ ] Verify the submitted source link and setup instructions in a fresh browser.
 - [ ] Check judge testing access, provider credits, and quota availability.
 - [ ] Record, upload publicly to YouTube, and replace the pending video link.

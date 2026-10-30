@@ -8,8 +8,9 @@ other cases, customers explicitly choose a worksheet and header row.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 MAX_SCAN_ROWS = 60
 MAX_SCAN_COLUMNS = 200

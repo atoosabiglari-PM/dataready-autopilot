@@ -16,7 +16,6 @@ from zipfile import BadZipFile, ZipFile
 from fastapi import UploadFile
 
 from app.services.layout_intelligence import detect_workbook_tables
-
 from app.tools.preflight import (
     MAX_CELL_LENGTH,
     MAX_COLUMNS,

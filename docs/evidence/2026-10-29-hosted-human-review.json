@@ -1,0 +1,31 @@
+{
+  "verification_date_pacific": "2026-10-29",
+  "public_url": "https://dataready-live-350298872740.us-west1.run.app",
+  "method": "Hosted HTTP API with a signed anonymous guest session",
+  "dataset": "One synthetic hotel row with a fictional public phone, valid longitude, and blank notes",
+  "owner_approval": false,
+  "declarations": {
+    "public_contact_columns": ["Public phone"],
+    "optional_columns": ["Notes"],
+    "reviewer_reference": "Synthetic deployment check",
+    "reason": "Synthetic test data only; confirms deployed review behavior, not customer approval."
+  },
+  "observed": {
+    "audit_http_status": 200,
+    "review_http_status": 200,
+    "before_status": "QUARANTINED",
+    "before_findings": [
+      {"code": "MISSING_VALUES", "column": "Notes", "severity": "WARNING", "count": 1},
+      {"code": "PII_VALUE_PATTERN", "column": "Public phone", "severity": "CRITICAL", "count": 1}
+    ],
+    "longitude_false_positive": false,
+    "after_status": "READY",
+    "review_status": "REVIEW_COMPLETE",
+    "accepted_findings": 2,
+    "fingerprint_unchanged": true,
+    "model_invoked": false,
+    "source_preserved": true,
+    "approval_token_issued": false
+  },
+  "limitations": "Synthetic API verification only; not owner approval of the actual hotel workbook or rendered-browser verification. Authorization tokens are omitted."
+}

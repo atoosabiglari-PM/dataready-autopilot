@@ -8,7 +8,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import live_product
-from app.services import excel_layout
 
 client = TestClient(live_product.app)
 

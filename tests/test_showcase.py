@@ -1,7 +1,5 @@
 """Public showcase tests. No paid inference; real deterministic trials."""
-from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app import showcase, web

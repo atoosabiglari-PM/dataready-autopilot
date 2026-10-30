@@ -11,8 +11,8 @@ from zipfile import BadZipFile, ZipFile
 
 from fastapi import UploadFile
 
-from app.services.user_import import CustomerUploadError, MAX_XLSX_EXPANDED_BYTES
 from app.services.layout_intelligence import detect_workbook_tables
+from app.services.user_import import MAX_XLSX_EXPANDED_BYTES, CustomerUploadError
 from app.tools.preflight import MAX_COLUMNS, MAX_FILE_SIZE_BYTES
 
 MAX_SHEETS = 30

@@ -4,7 +4,6 @@ No private customer data and no NVIDIA inference are used in these tests.
 """
 from io import BytesIO
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app import live_product

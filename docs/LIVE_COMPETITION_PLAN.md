@@ -9,12 +9,14 @@ The developer also completed the hosted browser walkthrough; its downloaded
 CSV was independently matched to the supplied trial evidence. Demo recording
 and submission remain pending.
 
-The subsequent human-review/coordinate update passed local validation. Redeploy
-and verify it before continuing the hotel recording. See [Human review](HUMAN_REVIEW.md).
+The human-review/coordinate update is deployed. Hosted synthetic review and a
+fresh live NVIDIA sample export passed; owner-confirmed hotel review in the
+updated browser UI remains pending. See [Human review](HUMAN_REVIEW.md).
 
 **Public live app:** https://dataready-live-350298872740.us-west1.run.app  
 **Hosted evidence:** [October 29 sample run](evidence/2026-10-29-hosted-sample.json)
 **Browser verification:** [October 29 browser run](evidence/2026-10-29-browser-sample.json)
+**After review update:** [fresh hosted sample](evidence/2026-10-29-hosted-review-update-sample.json)
 
 **Official rules:** https://nebiusglobalaihackathon.devpost.com/rules  
 **FAQ:** https://nebiusglobalaihackathon.devpost.com/details/faqs  
@@ -257,8 +259,9 @@ into the video as if it were fresh inference.
       matching CSV export through its HTTP API.
 - [x] Complete the final hosted browser walkthrough, including CSV download;
       independently verify the uploaded CSV against the selected trial fingerprint.
-- [ ] Redeploy the subsequent review/coordinate fix and verify its new controls
-      on the hotel workbook and the existing sample export.
+- [x] Deploy the review/coordinate fix and verify scoped review and the existing
+      live sample export through the public HTTP API.
+- [ ] Complete the owner's hotel review in the updated browser UI.
 - [x] Update the competition branch README to prominently describe the live
       customer product, setup, observed verification, and known limitations.
 - [ ] Check the submitted repository link opens the competition implementation
@@ -273,7 +276,7 @@ into the video as if it were fresh inference.
 ## 7. Submission scope and remaining limitations
 
 The hotel recording exposed a missing interactive review stage and a Longitude
-false positive. The locally tested update validates coordinates and adds scoped,
+false positive. The deployed, API-verified update validates coordinates and adds scoped,
 recorded review declarations with a fresh audit. Blank values and original
 findings are preserved. The heuristic score measures remaining checks under
 declared context; it is not a business-usefulness or correctness measure.

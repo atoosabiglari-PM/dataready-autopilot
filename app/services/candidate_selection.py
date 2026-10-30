@@ -1,8 +1,10 @@
 """Evidence-based recommendations, never permission to release a repair.
 
 Only freshly evaluated candidates with measurable audit improvements compete.
-A unique non-dominated result is recommended. Ties and trade-offs require a
-human choice. Audit evidence cannot prove cell-level or business correctness.
+A unique non-dominated result is recommended. Where independent trials prove
+*identical output bytes and audit findings*, a strictly simpler plan can win.
+Real ties and trade-offs require a human choice. Audit evidence cannot prove
+cell-level or business correctness.
 """
 
 from __future__ import annotations
@@ -148,10 +150,60 @@ def recommend_candidate_batch(
         )
     ))
 
+    equivalent_output_preference = False
+    if len(shortlist) > 1:
+        # Only collapse equivalent candidates when the independent trials
+        # created EXACTLY the same output bytes and matching audit evidence.
+        # Identical scores alone are insufficient: two different outputs can
+        # legitimately have different business meaning or hidden trade-offs.
+        finalists = [
+            result.trial
+            for result in evaluations
+            if result.trial.assessment.candidate.candidate_id in shortlist
+        ]
+        if len(finalists) == len(shortlist):
+            first = finalists[0]
+            first_after = first.audit_after
+            first_hash = first.output_fingerprint_sha256
+            identical_output = (
+                first_after is not None
+                and first_hash is not None
+                and first_after.fingerprint_sha256 == first_hash
+                and all(
+                    trial.audit_after is not None
+                    and trial.output_fingerprint_sha256 == first_hash
+                    and trial.audit_after.fingerprint_sha256 == first_hash
+                    and trial.audit_after.status == first_after.status
+                    and trial.audit_after.quality_score == first_after.quality_score
+                    and trial.audit_after.row_count == first_after.row_count
+                    and trial.audit_after.column_count == first_after.column_count
+                    and trial.audit_after.duplicate_row_count == first_after.duplicate_row_count
+                    and trial.audit_after.risk_flags == first_after.risk_flags
+                    and _profile(trial.audit_after) == _profile(first_after)
+                    for trial in finalists
+                )
+            )
+            if identical_output:
+                by_complexity = sorted(
+                    (
+                        len(trial.assessment.candidate.repair_plan.actions),
+                        trial.assessment.candidate.candidate_id,
+                    )
+                    for trial in finalists
+                )
+                # Do not arbitrarily choose between equally simple plans.
+                if by_complexity[0][0] < by_complexity[1][0]:
+                    shortlist = (by_complexity[0][1],)
+                    equivalent_output_preference = True
+
     if len(shortlist) == 1:
         status = "RECOMMENDED"
         recommended = shortlist[0]
         message = (
+            "Independent trials produced identical repaired bytes and matching "
+            "audits; the strictly simpler approved plan is recommended. "
+            "Customer authorization is still required before export."
+            if equivalent_output_preference else
             "One improving candidate leads on the measured evidence; "
             "release is not authorized."
         )

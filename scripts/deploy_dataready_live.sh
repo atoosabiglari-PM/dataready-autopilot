@@ -16,6 +16,36 @@ NEBIUS_SECRET="NEBIUS_API_KEY"
 SIGNING_SECRET="DATAREADY_APPROVAL_SIGNING_KEY"
 
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+# A newly enabled Google service can update IAM concurrently. Retry the whole
+# gcloud read-modify-write operation with a fresh policy/ETag on each attempt.
+# Permission errors and other non-conflict failures still stop immediately.
+retry_iam_update() {
+  local attempt=1 delay=2 exit_status error_file wait_seconds
+  error_file="$(mktemp)"
+  while true; do
+    if "$@" 2>"$error_file"; then
+      cat "$error_file" >&2
+      rm -f "$error_file"
+      return 0
+    else
+      exit_status=$?
+    fi
+    cat "$error_file" >&2
+    if [[ "$attempt" -ge 5 ]] || ! grep -Eqi \
+      'concurrent policy changes|ETag.*did not match|ABORTED|409.*conflict' "$error_file"; then
+      rm -f "$error_file"
+      return "$exit_status"
+    fi
+    printf -v wait_seconds '%d.%03d' "$delay" "$((RANDOM % 1000))"
+    printf 'Temporary IAM conflict; retrying attempt %s/5 in %s seconds...\n' \
+      "$((attempt + 1))" "$wait_seconds" >&2
+    sleep "$wait_seconds"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
 for command_name in gcloud openssl curl; do
   command -v "$command_name" >/dev/null 2>&1 || die "$command_name is required."
 done
@@ -70,7 +100,7 @@ if ! gcloud firestore databases describe --database='(default)' \
 fi
 
 printf 'Granting transaction access to the DataReady runtime...\n'
-gcloud projects add-iam-policy-binding "$PROJECT" \
+retry_iam_update gcloud projects add-iam-policy-binding "$PROJECT" \
   --member="serviceAccount:$RUNTIME_ACCOUNT" \
   --role="roles/datastore.user" \
   --quiet >/dev/null
@@ -106,7 +136,7 @@ if ! has_version "$SIGNING_SECRET"; then
 fi
 
 for name in "$NEBIUS_SECRET" "$SIGNING_SECRET"; do
-  gcloud secrets add-iam-policy-binding "$name" \
+  retry_iam_update gcloud secrets add-iam-policy-binding "$name" \
     --member="serviceAccount:$RUNTIME_ACCOUNT" \
     --role="roles/secretmanager.secretAccessor" \
     --project="$PROJECT" --quiet >/dev/null

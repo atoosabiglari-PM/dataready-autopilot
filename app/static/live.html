@@ -57,6 +57,12 @@ h2{font-size:34px;letter-spacing:-.052em;line-height:1.2;margin:6px 0}
 .excel-field label{display:block;font-size:12px;font-weight:700;margin:0 0 5px;color:#d4e3d6}
 .excel-field select,.excel-field input{width:100%;border:1px solid #527462;background:#121d1c;border-radius:7px;padding:9px;color:var(--text);font-size:13px}
 .excel-intro{font-size:12px;color:var(--muted);margin:7px 0}
+.recognized-tables{display:flex;flex-direction:column;gap:7px;margin:13px 0}
+.recognized-table{display:flex;gap:8px;justify-content:space-between;align-items:center;padding:10px;border:1px solid #4b695a;background:#1a3028;border-radius:9px;color:#d9e9dc;font-size:12px;text-align:left;cursor:pointer}
+.recognized-table:hover,.recognized-table:focus-visible{border-color:var(--lime)}
+.recognized-table.selected{background:#304a38;border-color:var(--lime)}
+.recognized-table strong{color:var(--lime)}
+.recognized-caption{font-size:11px;color:var(--muted);margin:8px 0 4px}
 #excel-preview{margin-top:12px;max-height:260px;overflow-y:auto;border-top:1px solid #435c50}
 .layout-row{display:flex;gap:11px;align-items:start;border-bottom:1px solid #34483e;padding:7px 2px;font-size:12px}
 .layout-row .row-num{min-width:56px;flex:0 0 56px;color:var(--lime);text-decoration:underline;cursor:pointer;border:0;background:none;text-align:left;padding:0}
@@ -174,6 +180,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
               <input id="excel-header-row" type="number" min="1" max="100001" step="1" value="" placeholder="Detecting…"></div>
           </div>
           <div id="excel-layout-message" class="excel-intro" aria-live="polite"></div>
+          <div id="recognized-tables" class="recognized-tables" aria-label="Automatically recognized tables"></div>
           <div id="excel-preview" aria-label="First workbook rows; select a row number to use it as the header"></div>
         </div>
         <div class="access">
@@ -282,6 +289,40 @@ function appendExcelOptions(form){
   }
   return true;
 }
+function recognizedTableForSheet(name){
+  var matches=((workbookLayout||{}).intelligence||{}).detected_tables||[];
+  return matches.find(function(item){return item.sheet_name===name;})||null;
+}
+function chooseRecognizedTable(item){
+  excelSheet.value=item.sheet_name;
+  excelHeader.value=String(item.header_row);
+  layoutConfirmed=true;layoutExplicit=true;
+  invalidatePreviousResults();drawWorkbookPreview();drawRecognizedTables();
+  status("Selected recognized table on "+item.sheet_name+" (row "+item.header_row+").");
+}
+function drawRecognizedTables(){
+  var list=document.getElementById("recognized-tables");list.replaceChildren();
+  var entries=((workbookLayout||{}).intelligence||{}).detected_tables||[];
+  if(entries.length<2)return;
+  list.appendChild(el("div","recognized-caption",
+    "DataReady found "+entries.length+" structured tables. Select which one to analyze; other tables are preserved."));
+  entries.forEach(function(item){
+    var button=el("button","recognized-table"+(
+      layoutConfirmed && excelSheet.value===item.sheet_name &&
+      Number(excelHeader.value)===item.header_row ? " selected":""
+    ));
+    button.type="button";
+    var isPrimary=workbookLayout.intelligence.auto_selected &&
+      item.sheet_name===workbookLayout.intelligence.recommended_sheet &&
+      item.header_row===workbookLayout.intelligence.recommended_header_row;
+    button.appendChild(el("span","",
+      item.sheet_name+" · header row "+item.header_row+
+      " · "+item.estimated_data_rows+" sampled data rows"));
+    button.appendChild(el("strong","",isPrimary?"PRIMARY":"SELECT"));
+    button.addEventListener("click",function(){chooseRecognizedTable(item);});
+    list.appendChild(button);
+  });
+}
 function drawWorkbookPreview(){
   var box=document.getElementById("excel-preview");box.replaceChildren();
   if(!workbookLayout)return;
@@ -296,6 +337,10 @@ function drawWorkbookPreview(){
      " (high confidence). "+(inferred.leading_note_rows||0)+" introductory row(s) will be excluded. "):
     (layoutConfirmed?"Manual worksheet/header selection. ":
      "Multiple possible tables or insufficient evidence. Choose the column-header row. ");
+  if(inferred.detected_table_count>1){
+    choice+=" DataReady recognized "+inferred.detected_table_count+
+      " tables; the other tables remain available below. ";
+  }
   text("excel-layout-message",choice+shape+"You can override by clicking a row number.");
   (sheet.preview_rows||[]).forEach(function(row){
     var line=el("div","layout-row");
@@ -305,7 +350,7 @@ function drawWorkbookPreview(){
     button.addEventListener("click",function(){
       excelHeader.value=String(row.row_number);
       layoutConfirmed=true;layoutExplicit=true;invalidatePreviousResults();
-      drawWorkbookPreview();
+      drawWorkbookPreview();drawRecognizedTables();
       status("Using Excel row "+row.row_number+" as the header on "+excelSheet.value+".");
     });
     line.appendChild(button);
@@ -338,7 +383,7 @@ async function inspectWorkbook(file){
       layoutConfirmed=false;layoutExplicit=false;
       status("DataReady found ambiguous Excel structure. Select a table-header row to continue.");
     }
-    drawWorkbookPreview();
+    drawWorkbookPreview();drawRecognizedTables();
   }catch(error){
     if(selected!==file)return;
     layoutConfirmed=false;
@@ -353,20 +398,26 @@ function setFile(file){
   excelBox.classList.toggle("hidden",!selectedExcel());
   excelSheet.replaceChildren();excelHeader.value="";
   document.getElementById("excel-preview").replaceChildren();
+  document.getElementById("recognized-tables").replaceChildren();
   if(!selected){text("selected","No file selected");return;}
   text("selected",selected.name+" · "+(selected.size/1024).toFixed(1)+" KB");
   status(selected.size>MAX?"File exceeds the 10 MB limit.": "Ready to analyze.",selected.size>MAX);
   if(selectedExcel())inspectWorkbook(selected);
 }
 excelSheet.addEventListener("change",function(){
-  layoutConfirmed=false;layoutExplicit=true;excelHeader.value="";
-  invalidatePreviousResults();drawWorkbookPreview();
-  status("Worksheet changed. Select a row containing column headers.");
+  var recognized=recognizedTableForSheet(excelSheet.value);
+  if(recognized){
+    chooseRecognizedTable(recognized);
+  }else{
+    layoutConfirmed=false;layoutExplicit=true;excelHeader.value="";
+    invalidatePreviousResults();drawWorkbookPreview();drawRecognizedTables();
+    status("Worksheet changed. Select a row containing column headers.");
+  }
 });
 excelHeader.addEventListener("change",function(){
   layoutConfirmed=Number.isInteger(Number(excelHeader.value))&&Number(excelHeader.value)>0&&excelHeader.value!=="";
   layoutExplicit=true;
-  invalidatePreviousResults();drawWorkbookPreview();
+  invalidatePreviousResults();drawWorkbookPreview();drawRecognizedTables();
   status(layoutConfirmed?"Excel header chosen. Re-run the audit.":"Choose a valid header row.",!layoutConfirmed);
 });
 uploadInput.addEventListener("change",function(){setFile(uploadInput.files[0]);});

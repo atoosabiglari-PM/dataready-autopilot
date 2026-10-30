@@ -106,7 +106,18 @@ Region: `us-west1`.
 
 Keep the existing Cloud Run services **dataready-autopilot** (Gemini) and
 **dataready-nvidia-showcase** (public synthetic replay) unchanged.
-Create **dataready-live** as a separate service using:
+
+**Guided deployment:** After all tests pass, run
+`bash scripts/deploy_dataready_live.sh` from the local repository root. It
+requires authenticated `gcloud`, the ignored local `.env` with `NEBIUS_API_KEY`,
+and a `.venv`. It prompts before making chargeable public cloud changes,
+creates a distinct service identity, scoped Secret Manager grants, Firestore
+quotas, and limits NVIDIA requests to 20/day globally and 5/day per signed
+browser by default. Never run it from an untrusted fork. The service URL is
+printed and `/health` is checked; verify actual paid inference afterward.
+
+For operators provisioning resources manually, create **dataready-live** as
+a separate service using:
 
 ```bash
 gcloud run deploy dataready-live \

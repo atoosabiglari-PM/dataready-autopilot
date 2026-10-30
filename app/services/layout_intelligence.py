@@ -39,6 +39,8 @@ class LayoutCandidate:
     score: int
     supporting_rows: int
     column_count: int
+    estimated_data_rows: int
+    estimated_table_area: int
     explanation: str
 
     def as_dict(self) -> dict[str, object]:
@@ -48,6 +50,8 @@ class LayoutCandidate:
             "score": self.score,
             "supporting_rows": self.supporting_rows,
             "column_count": self.column_count,
+            "estimated_data_rows": self.estimated_data_rows,
+            "estimated_table_area": self.estimated_table_area,
             "explanation": self.explanation,
         }
 
@@ -143,12 +147,30 @@ def _score_candidates(sheet: str, rows: list[tuple[object, ...]]) -> list[Layout
             score -= 13
         if ongoing == 0:
             score -= 15
+
+        # Measure the size of the table *below* this proposed header.
+        # Workbooks often include several valid sheets. An 80-record table
+        # is usually the primary one relative to a 20-record reference tab.
+        # This is evidence, not permission to discard other tables.
+        estimated_data_rows = 0
+        for next_row in rows[index + 1:]:
+            coverage = sum(
+                pos < len(next_row) and _present(next_row[pos])
+                for pos in positions
+            ) / len(positions)
+            if coverage < .5:
+                break
+            estimated_data_rows += 1
+        estimated_area = estimated_data_rows * len(positions)
+
         output.append(LayoutCandidate(
             sheet_name=sheet,
             header_row=index + 1,
             score=max(0, min(100, round(score))),
             supporting_rows=ongoing,
             column_count=len(positions),
+            estimated_data_rows=estimated_data_rows,
+            estimated_table_area=estimated_area,
             explanation=(
                 f"{len(positions)} potential column labels with "
                 f"{ongoing} following structurally aligned row(s)."
@@ -192,18 +214,56 @@ def detect_workbook_tables(worksheets: Iterable[Any]) -> dict[str, object]:
     top = choices[0] if choices else None
     runner_up = choices[1] if len(choices) > 1 else None
     gap = top.score - runner_up.score if top and runner_up else 100
+    selected: LayoutCandidate | None = None
+    selection_basis: str | None = None
+
     if (
         top and top.score >= 73 and gap >= 12 and top.supporting_rows >= 1
         and not (runner_up and runner_up.score >= 70 and gap < 20)
     ):
-        confidence = "high"
         selected = top
-    elif top and top.score >= 58:
-        confidence = "review"
-        selected = None
-    else:
-        confidence = "unresolved"
-        selected = None
+        selection_basis = "unique_strong_header"
+    elif top and top.score >= 73:
+        # If several worksheets contain genuine tables, recognize *all* of
+        # them, then choose the largest one only if it dominates strongly.
+        # This prevents the auxiliary/exclusions tab in a hotel directory
+        # from blocking the larger main table. Equally sized tables remain
+        # ambiguous, and all alternatives stay available for selection.
+        strong = [
+            c for c in choices
+            if c.score >= max(73, top.score - 8)
+            and c.supporting_rows >= 1
+        ]
+        by_area = sorted(
+            strong, key=lambda c: (-c.estimated_table_area, -c.score)
+        )
+        if len(by_area) >= 2:
+            primary, secondary = by_area[:2]
+            if (
+                primary.sheet_name != secondary.sheet_name
+                and primary.estimated_data_rows >= 10
+                and primary.estimated_table_area >= 3 * max(
+                    1, secondary.estimated_table_area
+                )
+                and primary.score >= top.score - 8
+                and all(
+                    c.sheet_name != primary.sheet_name
+                    or c.header_row == primary.header_row
+                    or c.score < 73
+                    for c in strong
+                )
+            ):
+                selected = primary
+                selection_basis = "dominant_table_area"
+
+    confidence = (
+        "high" if selected else
+        "review" if top and top.score >= 58 else "unresolved"
+    )
+    recognized_tables = [
+        c.as_dict()
+        for c in choices if c.score >= 73 and c.supporting_rows >= 1
+    ]
 
     return {
         "method": "deterministic_structure_analysis",
@@ -211,13 +271,19 @@ def detect_workbook_tables(worksheets: Iterable[Any]) -> dict[str, object]:
         "auto_selected": selected is not None,
         "recommended_sheet": selected.sheet_name if selected else None,
         "recommended_header_row": selected.header_row if selected else None,
+        "selection_basis": selection_basis,
+        "detected_tables": recognized_tables[:MAX_CHOICES],
+        "detected_table_count": len(recognized_tables),
         "candidates": [candidate.as_dict() for candidate in choices[:MAX_CHOICES]],
         "reason": (
-            "A table header is supported by repeated aligned records; "
+            "Multiple valid tables were recognized. The largest consistent "
+            "table was selected as primary; other tables remain selectable."
+            if selection_basis == "dominant_table_area" else
+            "A unique table header is supported by repeated aligned records; "
             "earlier note rows can be excluded."
             if selected else
-            "Multiple table layouts or insufficient structural evidence; "
-            "choose the worksheet and header row."
+            "Multiple similarly sized tables or insufficient structural "
+            "evidence; choose the worksheet and header row."
         ),
         "leading_note_rows": selected.header_row - 1 if selected else None,
         "no_ai_call": True,

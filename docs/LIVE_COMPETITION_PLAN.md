@@ -1,7 +1,9 @@
 # DataReady — Nebius × NVIDIA live product competition plan
 
-**Status:** Live customer-upload product code created on the competition feature
-branch. Do not claim deployment or real-cloud verification until completed.
+**Status (October 29, 2026, Pacific):** The competition feature branch has
+355 passing tests. A real local NVIDIA / Nebius customer-upload run, approved
+export, and downloaded CSV fingerprint were verified. Public deployment and
+hosted end-to-end verification remain pending.
 
 **Official rules:** https://nebiusglobalaihackathon.devpost.com/rules  
 **FAQ:** https://nebiusglobalaihackathon.devpost.com/details/faqs  
@@ -175,8 +177,8 @@ financial spending cap or replace provider-side budget controls.
 
 **Deadline:** Fri **Oct 30, 2026 at 10:00 AM Pacific**.
 
-**Judging:** Dec 1–15, 2026. Keep the free-to-test working application
-available to judges until Dec 15. Our public live application requires
+**Judging:** Dec 9–23, 2026, per the official rules checked October 29. Keep
+the free-to-test working application available to judges until Dec 23. Our public live application requires
 no login or judge credentials; supply the direct upload-and-analysis URL.
 
 **Track:** Best Apps and Agents.
@@ -208,8 +210,9 @@ user-provided-file frontend, export approval, and security tests.
   show real audit findings and source fingerprint.
 - 0:45–1:15: Start real **NVIDIA Nemotron through Nebius Token Factory**
   inference. Explain minimized inputs/aliased columns, no raw rows.
-- 1:15–1:50: Show multiple candidates, isolated trials, rejected non-improving
-  alternatives, and independent audit evidence.
+- 1:15–1:50: Show the actual returned candidates, isolated trials, and independent
+  audit evidence. If this run returns one proposal, say one; show rejected
+  alternatives only when the actual run produces them.
 - 1:50–2:15: Approve the unique improving candidate; download the *separate*
   repaired CSV; show original untouched and remaining findings.
 - 2:15–2:30: The enterprise governance insight: model proposes, evidence
@@ -224,18 +227,38 @@ into the video as if it were fresh inference.
 - [x] Core audit, policy, separate-file executor, regression checks and model
       candidate generation built and successfully exercised locally earlier.
 - [x] Independent multi-candidate NVIDIA live run succeeded locally.
-- [x] Previous app showed 290 passing tests.
+- [x] Current complete suite: **355 passed**, independently run here and confirmed
+      on the developer's Mac. Existing Ruff findings remain documented.
 - [x] Real-customer upload web flow, multiple formats, model-gated API and
       explicit approved export implemented in the **new feature branch**.
-- [ ] **Run full local tests after this addition** and repair any regressions.
-- [ ] Verify a real upload, real Nebius/Nemotron call, and real CSV export
-      in the new customer UI (not a mock).
+- [x] **Run full local tests after this addition** and repair the two incorrect
+      test expectations; code checkpoint `be587579`.
+- [x] Verify a real upload, real Nebius/Nemotron call, and real CSV export
+      in the new customer UI. Sample result: 4 to 3 rows, 1 to 0 duplicates,
+      score 80 to 90, one missing category preserved. Downloaded output SHA-256
+      exactly matched the independent trial's fingerprint.
 - [ ] Securely configure Cloud Run runtime secrets, Firestore atomic quota
       transactions, anonymous guest sessions, and spending controls.
 - [ ] Deploy and verify separate **dataready-live** URL using real uploads.
-- [ ] Update the main README to prominently describe the live customer product
-      and how to reproduce the full demonstration.
+- [x] Update the competition branch README to prominently describe the live
+      customer product, setup, observed verification, and known limitations.
+- [ ] Check the submitted repository link opens the competition implementation
+      and its README; do not accidentally submit only the legacy Gemini version.
 - [ ] Capture a real working demo video (<3 minutes), publish to YouTube.
 - [ ] Complete Devpost entry, competition feedback, and significance statement
       **before Oct 30 at 10:00 AM Pacific**.
-- [ ] Maintain application and credentials for judges through Dec 15, 2026.
+- [ ] Verify judges can complete testing despite the public demo's quotas;
+      provide clear test-build access/instructions and resolve access failures.
+- [ ] Maintain application and credentials for judges through Dec 23, 2026.
+
+## 7. Submission scope and remaining limitations
+
+Freeze feature development for the deadline. The hotel workbook showed useful
+table detection, but public contact fields and a decimal Longitude value triggered
+critical contact-pattern findings. Blank optional notes/dates also count against
+the heuristic score. The score is not a business-usefulness measure. These are
+documented limitations; they are not a reason to disable the review checks.
+
+Use a harmless, accurately labeled sample for the live repair demonstration.
+Do not claim the hotel workbook was repaired or that every upload is supported.
+Do not commit customer workbook rows or credentials into the submission repository.

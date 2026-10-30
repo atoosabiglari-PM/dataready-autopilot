@@ -2,13 +2,13 @@
 
 **Governed data readiness before enterprise data enters AI workflows.**
 
-DataReady Autopilot is a safety-first autonomous data-readiness workflow powered by **Gemini 3.6 Flash**, **Google ADK**, and **Google Cloud Run**.
+DataReady Autopilot audits uploaded tabular data, asks **NVIDIA Nemotron through Nebius Token Factory** for constrained repair proposals, independently tests those proposals, and exports a separate repaired CSV after human approval. Its deterministic core is provider-independent; the earlier Gemini / Google ADK implementation remains available as an alternative.
 
 Instead of giving an LLM unrestricted access to enterprise data and allowing it to directly modify datasets, DataReady Autopilot separates:
 
 > **AI reasoning from deterministic authorization, execution, verification, and evidence.**
 
-Gemini proposes constrained repairs from minimized audit evidence. Deterministic controls decide what is allowed to execute. Approved repairs run only on a separate copy, are independently re-audited, and are cryptographically linked to the original source using SHA-256.
+The model proposes constrained repairs from minimized audit evidence. Deterministic controls decide what is allowed to execute. Approved repairs run only on a separate copy, are independently re-audited, and are cryptographically linked to the original source using SHA-256.
 
 ---
 
@@ -37,15 +37,46 @@ It supports **real user-supplied** CSV, flat JSON, and selectable-worksheet XLSX
 7. Download JSON evidence in the browser. Unmodified original files remain
    on the user's machine.
 
-The real customer-upload app is now implemented on this feature branch, but
-**do not claim it is deployed or fully tested until the new acceptance tests
-and real end-to-end customer flow pass.**
+**Verified locally on October 29, 2026:** all **355 tests passed**. The customer
+UI completed a real Nebius / NVIDIA call, isolated repair trial, explicit user
+approval, and CSV download. In the four-row sample, one exact duplicate was
+removed, the quality score changed from 80 to 90, and the unresolved blank
+category stayed blank. The downloaded CSV's SHA-256 matched the trial output:
+`1ae42f08eeac9adb8ef3d3bf0fa64857eb8be4bf39c11016b544c6f5e772d2cc`.
+This verifies that sample workflow; it does not establish general data correctness.
+
+**Public live deployment and hosted end-to-end verification remain pending.**
+The competition implementation is on
+[`feature/competing-repair-candidates`](https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates).
+
+### Known limitations
+
+- The heuristic quality score subtracts penalties for findings, including
+  contact-data flags. It is not a business-readiness percentage, accuracy
+  measure, or compliance certification. Several findings can drive it to zero.
+- Optional notes and workflow dates can be reported as missing; the auditor
+  does not know which fields the business requires.
+- Phone/email pattern matching does not distinguish public business contacts
+  from personal information. Decimal coordinates can also match the phone
+  pattern. Critical findings stop AI planning for review; this limitation is
+  not bypassed by automatically treating a column as safe.
+- Missing values are not invented. Supported repairs are exact deduplication,
+  outer-whitespace trimming, and missing-marker normalization, subject to policy.
+- A live model may propose zero, one, or several candidates. Only actual
+  proposals and measured results are displayed; a repair is not guaranteed.
+- Excel formula results are read from saved caches and may be stale. Missing
+  cached results prevent planning and export until recalculation and saving.
+- Ruff reports 21 pre-existing lint findings; the test correction introduced none.
 
 ### Launch the real live product locally
 
 ```bash
-python -m pip install -r requirements.txt
-python -m uvicorn app.live_product:app --host 127.0.0.1 --port 8080
+git clone --branch feature/competing-repair-candidates https://github.com/atoosabiglari-PM/dataready-autopilot.git
+cd dataready-autopilot
+python3.12 -m venv .venv
+./.venv/bin/python -m pip install -r requirements-dev.txt
+./.venv/bin/python -m pytest -q
+./.venv/bin/python -m uvicorn app.live_product:app --host 127.0.0.1 --port 8080
 ```
 
 Open `http://127.0.0.1:8080/` to upload and audit real data.
@@ -56,6 +87,12 @@ Local development uses bounded in-memory quotas. Cloud Run deployment
 requires an atomic **Firestore daily quota**, a separate server-side
 `DATAREADY_APPROVAL_SIGNING_KEY`, and explicit operator enablement.
 Never put the provider API key in the browser or in Git.
+
+For local live inference, put `NEBIUS_API_KEY=your-provider-key` in the ignored
+`.env` file before starting the server. The audit works without a model key.
+After opening the app, choose **Load a sample dataset to try it**, then
+**Run live NVIDIA analysis**. Review the measured result, check the approval
+checkbox if appropriate, and download the separate CSV and JSON evidence.
 
 For the public competition deployment, run `bash scripts/deploy_dataready_live.sh`
 from the repository root **after passing all tests**. It requires the local
@@ -68,6 +105,9 @@ not an unlimited paid inference endpoint. Set provider-side spend limits too.
 
 **Submission acceptance and safe Cloud Run deployment:**
 [docs/LIVE_COMPETITION_PLAN.md](docs/LIVE_COMPETITION_PLAN.md)
+
+**Submission text and recording outline:**
+[docs/DEVPOST_SUBMISSION_DRAFT.md](docs/DEVPOST_SUBMISSION_DRAFT.md)
 
 The existing Gemini/Google ADK workflow and the previously deployed fixed
 synthetic showcase are retained, but the replay is not the competition's
@@ -100,6 +140,10 @@ Visit `http://127.0.0.1:8080/showcase`.
 ---
 
 ## Live Google Cloud Deployment
+
+The URL in this section is the earlier **Gemini service**, not the new
+NVIDIA customer-upload competition service. The remaining sections document
+that earlier workflow unless explicitly labeled otherwise.
 
 **Google Cloud Run service**
 

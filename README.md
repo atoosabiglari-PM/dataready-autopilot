@@ -57,6 +57,15 @@ requires an atomic **Firestore daily quota**, a separate server-side
 `DATAREADY_APPROVAL_SIGNING_KEY`, and explicit operator enablement.
 Never put the provider API key in the browser or in Git.
 
+For the public competition deployment, run `bash scripts/deploy_dataready_live.sh`
+from the repository root **after passing all tests**. It requires the local
+ignored `.env` and authenticated Google Cloud CLI, asks for explicit approval
+of billable/public resources, creates a dedicated Cloud Run service identity,
+Firestore-backed quota, and private Secret Manager credentials, then deploys
+`dataready-live` separately from the existing services. The deployment script
+starts with 20 live model calls globally per UTC day (maximum 5 per browser),
+not an unlimited paid inference endpoint. Set provider-side spend limits too.
+
 **Submission acceptance and safe Cloud Run deployment:**
 [docs/LIVE_COMPETITION_PLAN.md](docs/LIVE_COMPETITION_PLAN.md)
 

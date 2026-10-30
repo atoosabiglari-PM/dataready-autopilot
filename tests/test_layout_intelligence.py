@@ -107,6 +107,88 @@ def test_auto_detection_applies_to_actual_import_without_manual_worksheet_settin
                for note in data["import_warnings"])
 
 
+def test_two_real_tables_select_primary_directory_but_preserve_exclusions():
+    """A large primary table plus a smaller reference sheet is not ambiguity.
+
+    The selection must be supported by a strong size difference, and both
+    legitimate tables must remain available to the customer.
+    """
+    workbook = hotel_directory_workbook()
+    other = workbook.create_sheet("Boundary and exclusions")
+    for note in [
+        "Excluded properties and boundary calculations",
+        "Coverage reference notes",
+        "Research notes",
+        "Distances are only approximate",
+        "References are provisional",
+        "Confirm separately",
+        "Do not mix with the main directory",
+    ]:
+        other.append([note])
+    other.append([
+        "ID", "Hotel / motel", "Street address", "City", "State", "ZIP",
+        "Approx. miles", "Google Maps", "Public phone", "Public email",
+        "Manager / contact", "Contact status",
+    ])
+    for index in range(23):
+        other.append([
+            f"B{index:03d}", f"Boundary property {index}",
+            f"Street {index}", "Sunnyvale", "CA", "94089",
+            index / 10, "https://example.com", "NU", "NU",
+            "NU", "Excluded",
+        ])
+
+    detection = detect_workbook_tables(workbook.worksheets)
+    assert detection["auto_selected"] is True
+    assert detection["confidence"] == "high"
+    assert detection["recommended_sheet"] == "Hotel directory"
+    assert detection["recommended_header_row"] == 8
+    assert detection["selection_basis"] == "dominant_table_area"
+    assert detection["detected_table_count"] >= 2
+    tables = detection["detected_tables"]
+    assert {"Hotel directory", "Boundary and exclusions"}.issubset(
+        {t["sheet_name"] for t in tables}
+    )
+    main = next(t for t in tables if t["sheet_name"] == "Hotel directory")
+    second = next(t for t in tables if t["sheet_name"] == "Boundary and exclusions")
+    assert main["header_row"] == second["header_row"] == 8
+    assert main["estimated_table_area"] >= 3 * second["estimated_table_area"]
+
+    # Uploading the complete workbook, without selecting the sheet or row,
+    # must audit the main directory. The secondary sheet remains available.
+    response = client.post(
+        "/api/audit",
+        files={"file": ("hotels-and-exclusions.xlsx", to_bytes(workbook))},
+    )
+    assert response.status_code == 200, response.text
+    imported = response.json()
+    assert imported["original_audit"]["row_count"] == 86
+    assert imported["import_layout"]["sheet"] == "Hotel directory"
+    assert imported["import_layout"]["header_row"] == 8
+
+
+def test_other_recognized_table_remains_explicitly_analyzable():
+    """A customer can choose the smaller table, without changing the source."""
+    workbook = hotel_directory_workbook()
+    other = workbook.create_sheet("Boundary and exclusions")
+    for i in range(7):
+        other.append([f"Background note {i}"])
+    other.append(["ID", "Name", "Status"])
+    for i in range(12):
+        other.append([f"B{i:03d}", f"Excluded {i}", "Out of scope"])
+
+    response = client.post(
+        "/api/audit",
+        files={"file": ("directory.xlsx", to_bytes(workbook))},
+        data={"sheet_name": "Boundary and exclusions", "header_row": "8"},
+    )
+    assert response.status_code == 200, response.text
+    audit = response.json()
+    assert audit["original_audit"]["row_count"] == 12
+    assert audit["import_layout"]["sheet"] == "Boundary and exclusions"
+    assert audit["import_layout"]["automatically_detected"] is False
+
+
 def test_multiple_plausible_worksheets_require_customer_choice():
     from openpyxl import Workbook
 

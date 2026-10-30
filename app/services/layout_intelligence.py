@@ -217,44 +217,52 @@ def detect_workbook_tables(worksheets: Iterable[Any]) -> dict[str, object]:
     selected: LayoutCandidate | None = None
     selection_basis: str | None = None
 
+    # First assess all *credible* tables for structural dominance, even if
+    # the smaller table has a better header-label score. Comparing only
+    # scores close to the maximum mistakenly discarded the big main directory
+    # when its legitimate custom column names scored below a reference tab.
+    credible = [
+        c for c in choices
+        if c.score >= 75
+        and c.supporting_rows >= 3
+        and c.estimated_data_rows >= 3
+    ]
+    by_area = sorted(
+        credible, key=lambda c: (-c.estimated_table_area, -c.score)
+    )
+    if len(by_area) >= 2:
+        primary, secondary = by_area[:2]
+        # This preference is restricted to distinct worksheets, with a
+        # substantial difference in BOTH record count and overall area.
+        # Two similar tables must still require human review.
+        if (
+            primary.sheet_name != secondary.sheet_name
+            and primary.estimated_data_rows >= 10
+            and primary.estimated_data_rows * 2
+            >= secondary.estimated_data_rows * 3
+            and primary.estimated_table_area >= 3 * max(
+                1, secondary.estimated_table_area
+            )
+            and all(
+                c.sheet_name != primary.sheet_name
+                or c.header_row == primary.header_row
+                or c.score < 73
+                for c in choices
+            )
+        ):
+            selected = primary
+            selection_basis = "dominant_table_area"
+
+    # Only after checking for a clearly dominant main table should
+    # a high-scoring auxiliary worksheet win on its header-label score.
     if (
-        top and top.score >= 73 and gap >= 12 and top.supporting_rows >= 1
+        selected is None
+        and top and top.score >= 73 and gap >= 12
+        and top.supporting_rows >= 1
         and not (runner_up and runner_up.score >= 70 and gap < 20)
     ):
         selected = top
         selection_basis = "unique_strong_header"
-    elif top and top.score >= 73:
-        # If several worksheets contain genuine tables, recognize *all* of
-        # them, then choose the largest one only if it dominates strongly.
-        # This prevents the auxiliary/exclusions tab in a hotel directory
-        # from blocking the larger main table. Equally sized tables remain
-        # ambiguous, and all alternatives stay available for selection.
-        strong = [
-            c for c in choices
-            if c.score >= max(73, top.score - 8)
-            and c.supporting_rows >= 1
-        ]
-        by_area = sorted(
-            strong, key=lambda c: (-c.estimated_table_area, -c.score)
-        )
-        if len(by_area) >= 2:
-            primary, secondary = by_area[:2]
-            if (
-                primary.sheet_name != secondary.sheet_name
-                and primary.estimated_data_rows >= 10
-                and primary.estimated_table_area >= 3 * max(
-                    1, secondary.estimated_table_area
-                )
-                and primary.score >= top.score - 8
-                and all(
-                    c.sheet_name != primary.sheet_name
-                    or c.header_row == primary.header_row
-                    or c.score < 73
-                    for c in strong
-                )
-            ):
-                selected = primary
-                selection_basis = "dominant_table_area"
 
     confidence = (
         "high" if selected else

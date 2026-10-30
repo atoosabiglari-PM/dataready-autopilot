@@ -7,6 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.audit_review import AuditReview
 from app.tools.audit import AuditReport
 
 UNIVERSAL_INVARIANTS = [
@@ -68,6 +69,7 @@ class DatasetPolicy(BaseModel):
         max_length=100,
     )
     allowed_actions: set[RepairAction] = Field(default_factory=set)
+    audit_review: AuditReview | None = None
 
 
 class ActionDecision(BaseModel):
@@ -127,6 +129,12 @@ def validate_repair_plan(
     """Authorize a repair plan without relying on AI judgment."""
 
     policy = dataset_policy or DatasetPolicy()
+
+    if audit_report.review_context != policy.audit_review:
+        return _denied_decision(
+            audit_report, repair_plan, policy,
+            "The audit review context does not match the dataset policy.",
+        )
 
     if audit_report.status == "BLOCKED":
         return _denied_decision(

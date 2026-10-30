@@ -5,6 +5,9 @@ workflow passed. The hosted browser walkthrough and downloaded files were also
 verified. Video upload and Devpost submission remain pending. Replace the
 pending video link before submitting.
 
+The subsequent human-review/coordinate update passed local validation but needs
+redeployment and a hosted check before its new behavior is recorded or submitted.
+
 ## Submission fields
 
 - **Project name:** DataReady
@@ -36,6 +39,10 @@ and preserves unresolved findings. The user can authorize a separate CSV export;
 export revalidates the source fingerprint, plan, and trial evidence. JSON evidence
 records the findings and recommendation. Critical findings stop automatic planning
 for human review, and unchanged or ambiguous cases need not produce a repair.
+The new review panel records per-column declarations for public business contacts
+and optional blank fields, then rechecks the unchanged file. Original findings
+remain in the evidence. Other critical findings require source correction and
+a fresh audit; review cannot override them.
 
 ## How it is built
 
@@ -56,7 +63,7 @@ HTTP API. The earlier Gemini / Google ADK path remains a separate provider optio
 
 ## Verified results
 
-- The complete current automated suite passed: **355 tests**.
+- The complete current automated suite passed locally: **393 tests**.
 - A real local customer-UI run called NVIDIA Nemotron through Nebius Token Factory.
 - The sample contained four rows, one exact duplicate, and one missing category.
 - The local run returned one candidate: remove the exact duplicate.
@@ -100,10 +107,11 @@ the detected table. Saved formula results can be stale; missing caches block
 planning and export until the workbook is recalculated and saved.
 
 The current quality score is heuristic and combines several kinds of findings.
-Optional blank fields may be expected in a business workflow. Contact-pattern
-matching does not distinguish public business contacts from personal information
-and can flag decimal coordinates. These findings remain visible and can stop
-planning for review. DataReady does not currently infer business-required fields,
+Optional blank fields may be expected in a business workflow. Reviewers can
+explicitly declare those fields optional and identify supported public business
+contact columns. Those declarations are recorded, not independently proven.
+Valid recognized coordinates are checked by numeric range; other critical
+findings remain blocking. DataReady does not infer business-required fields,
 fill missing facts, or guarantee that a dataset is correct or compliant.
 
 ## Feedback on the tools used
@@ -141,6 +149,8 @@ workbook was repaired. Use the public app linked above for the recording.
 - [x] Deploy the public live app and verify the sample API workflow; add its URL.
 - [x] Complete the hosted browser walkthrough, including approval and download;
       verify the downloaded CSV against its evidence fingerprint.
+- [ ] Redeploy the subsequent review/coordinate update and verify the hotel review
+      and sample export on the new public revision.
 - [ ] Verify the submitted source link and setup instructions in a fresh browser.
 - [ ] Check judge testing access, provider credits, and quota availability.
 - [ ] Record, upload publicly to YouTube, and replace the pending video link.

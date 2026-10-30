@@ -62,24 +62,32 @@ records the one-candidate result. The demo recording remains pending.
 The competition implementation is on
 [`feature/competing-repair-candidates`](https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates).
 
+**Review update, locally verified:** **393 tests passed**. The upload UI now
+includes **Review findings and recheck**, with recorded declarations for public
+business contacts and optional blanks, signed file/table scope, and fresh checks
+before analysis/export. Valid latitude/longitude values no longer trigger partial
+phone matches. This update must be redeployed and checked on the public app before
+recording. See [the review workflow and validation](docs/HUMAN_REVIEW.md).
+
 ### Known limitations
 
 - The heuristic quality score subtracts penalties for findings, including
   contact-data flags. It is not a business-readiness percentage, accuracy
   measure, or compliance certification. Several findings can drive it to zero.
 - Optional notes and workflow dates can be reported as missing; the auditor
-  does not know which fields the business requires.
+  does not infer business requirements. A reviewer can explicitly declare a
+  column optional; blanks remain blank and the original finding is retained.
 - Phone/email pattern matching does not distinguish public business contacts
-  from personal information. Decimal coordinates can also match the phone
-  pattern. Critical findings stop AI planning for review; this limitation is
-  not bypassed by automatically treating a column as safe.
+  from personal information without context. Public/business contact columns
+  require explicit reviewer declarations and type checks. Other critical findings
+  remain blocking. Recognized coordinate columns are validated for numeric range.
 - Missing values are not invented. Supported repairs are exact deduplication,
   outer-whitespace trimming, and missing-marker normalization, subject to policy.
 - A live model may propose zero, one, or several candidates. Only actual
   proposals and measured results are displayed; a repair is not guaranteed.
 - Excel formula results are read from saved caches and may be stale. Missing
   cached results prevent planning and export until recalculation and saving.
-- Ruff reports 21 pre-existing lint findings; the test correction introduced none.
+- Changed Python files pass Ruff; unrelated legacy lint findings remain.
 
 ### Launch the real live product locally
 

@@ -80,6 +80,9 @@ def assess_audit_regressions(
     after = AuditReport.model_validate(after.model_dump(mode="python"))
     plan = RepairPlan.model_validate(repair_plan.model_dump(mode="python"))
 
+    if before.review_context != after.review_context:
+        raise RegressionInputError("Before and after audits must use the same human review context.")
+
     if before.status == "BLOCKED" or before.preflight.status == "BLOCKED":
         raise RegressionInputError("A blocked source cannot be evaluated as a repair trial.")
     if not _valid_hash(before.fingerprint_sha256):

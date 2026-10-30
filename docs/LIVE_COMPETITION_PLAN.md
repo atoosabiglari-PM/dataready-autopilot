@@ -1,13 +1,16 @@
 # DataReady — Nebius × NVIDIA live product competition plan
 
 **Status (October 29, 2026, Pacific):** The competition feature branch has
-355 passing tests. A real local NVIDIA / Nebius customer-upload run, approved
+393 passing tests. A real local NVIDIA / Nebius customer-upload run, approved
 export, and downloaded CSV fingerprint were verified. Public deployment and
 the hosted sample API workflow also passed, including signed guest access,
 live NVIDIA inference, approval enforcement, and matching export fingerprint.
 The developer also completed the hosted browser walkthrough; its downloaded
 CSV was independently matched to the supplied trial evidence. Demo recording
 and submission remain pending.
+
+The subsequent human-review/coordinate update passed local validation. Redeploy
+and verify it before continuing the hotel recording. See [Human review](HUMAN_REVIEW.md).
 
 **Public live app:** https://dataready-live-350298872740.us-west1.run.app  
 **Hosted evidence:** [October 29 sample run](evidence/2026-10-29-hosted-sample.json)
@@ -236,8 +239,8 @@ into the video as if it were fresh inference.
 - [x] Core audit, policy, separate-file executor, regression checks and model
       candidate generation built and successfully exercised locally earlier.
 - [x] Independent multi-candidate NVIDIA live run succeeded locally.
-- [x] Current complete suite: **355 passed**, independently run here and confirmed
-      on the developer's Mac. Existing Ruff findings remain documented.
+- [x] Current complete suite: **393 passed locally**. The earlier 355-test
+      checkpoint was also confirmed on the developer's Mac.
 - [x] Real-customer upload web flow, multiple formats, model-gated API and
       explicit approved export implemented in the **new feature branch**.
 - [x] **Run full local tests after this addition** and repair the two incorrect
@@ -254,6 +257,8 @@ into the video as if it were fresh inference.
       matching CSV export through its HTTP API.
 - [x] Complete the final hosted browser walkthrough, including CSV download;
       independently verify the uploaded CSV against the selected trial fingerprint.
+- [ ] Redeploy the subsequent review/coordinate fix and verify its new controls
+      on the hotel workbook and the existing sample export.
 - [x] Update the competition branch README to prominently describe the live
       customer product, setup, observed verification, and known limitations.
 - [ ] Check the submitted repository link opens the competition implementation
@@ -267,11 +272,11 @@ into the video as if it were fresh inference.
 
 ## 7. Submission scope and remaining limitations
 
-Freeze feature development for the deadline. The hotel workbook showed useful
-table detection, but public contact fields and a decimal Longitude value triggered
-critical contact-pattern findings. Blank optional notes/dates also count against
-the heuristic score. The score is not a business-usefulness measure. These are
-documented limitations; they are not a reason to disable the review checks.
+The hotel recording exposed a missing interactive review stage and a Longitude
+false positive. The locally tested update validates coordinates and adds scoped,
+recorded review declarations with a fresh audit. Blank values and original
+findings are preserved. The heuristic score measures remaining checks under
+declared context; it is not a business-usefulness or correctness measure.
 
 Use a harmless, accurately labeled sample for the live repair demonstration.
 Do not claim the hotel workbook was repaired or that every upload is supported.

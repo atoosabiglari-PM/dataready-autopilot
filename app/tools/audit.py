@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import csv
 import re
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Literal
 
 import pandas as pd
 from pydantic import BaseModel, Field
 
+from app.core.audit_review import AuditReview
 from app.tools.fingerprint import calculate_sha256
 from app.tools.preflight import PreflightReport, preflight_csv
 
@@ -40,6 +42,24 @@ PII_VALUE_PATTERN = re.compile(
     r"\d{3}[-.\s]?\d{4}(?!\d))",
     re.IGNORECASE,
 )
+
+PUBLIC_CONTACT_COLUMNS = {
+    "public_phone": "phone", "public_phone_number": "phone",
+    "business_phone": "phone", "business_phone_number": "phone",
+    "public_email": "email", "public_email_address": "email",
+    "business_email": "email", "business_email_address": "email",
+}
+EMAIL_VALUE = re.compile(r"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}", re.IGNORECASE)
+PHONE_VALUE = re.compile(
+    r"(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}"
+    r"(?:\s*(?:ext\.?|x)\s*\d{1,6})?", re.IGNORECASE,
+)
+SSN_VALUE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+COORDINATE_LIMITS = {
+    "latitude": 90, "lat": 90, "center_latitude": 90,
+    "longitude": 180, "lon": 180, "lng": 180, "center_longitude": 180,
+}
+DECIMAL_VALUE = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
 
 PROMPT_INJECTION_PATTERN = re.compile(
     r"(?:\b(?:ignore|disregard|override)\s+(?:all\s+)?"
@@ -80,6 +100,8 @@ class AuditReport(BaseModel):
     quality_score: int = Field(ge=0, le=100)
     preflight: PreflightReport
     issues: list[AuditIssue] = Field(default_factory=list)
+    reviewed_findings: list[AuditIssue] = Field(default_factory=list)
+    review_context: AuditReview | None = None
 
 
 def _normalize_column_name(column_name: str) -> str:
@@ -87,6 +109,56 @@ def _normalize_column_name(column_name: str) -> str:
 
     normalized = re.sub(r"[^a-z0-9]+", "_", column_name.strip().lower())
     return normalized.strip("_")
+
+
+def public_contact_kind(column_name: str) -> str | None:
+    return PUBLIC_CONTACT_COLUMNS.get(_normalize_column_name(column_name))
+
+
+def _valid_coordinate(value: str, column_name: str) -> bool:
+    """A typed, in-range whole numeric cell cannot be a partial phone match.
+
+    This does not exempt emails, phone strings, SSNs, or arbitrary contents just
+    because someone named the column Longitude.
+    """
+    limit = COORDINATE_LIMITS.get(_normalize_column_name(column_name))
+    if limit is None or not DECIMAL_VALUE.fullmatch(value):
+        return False
+    try:
+        number = Decimal(value)
+        return number.is_finite() and -limit <= number <= limit
+    except InvalidOperation:
+        return False
+
+
+def _apply_review(
+    dataframe: pd.DataFrame, issues: list[AuditIssue], review: AuditReview,
+) -> tuple[list[AuditIssue], list[AuditIssue]]:
+    """Recheck the declaration against actual values on every fresh audit."""
+    public = set(review.public_contact_columns)
+    optional = set(review.optional_columns)
+    if len(public) != len(review.public_contact_columns) or len(optional) != len(review.optional_columns):
+        raise ValueError("Review columns must be unique.")
+    if not (public | optional) or not (public | optional) <= set(dataframe.columns):
+        raise ValueError("Review must name existing columns.")
+    if any(issue.code == "AMBIGUOUS_COLUMN_NAMES" for issue in issues):
+        raise ValueError("Resolve ambiguous column names in the source before reviewing.")
+    for column in public:
+        kind = public_contact_kind(column)
+        if kind is None:
+            raise ValueError("Only explicitly public/business phone or email columns can be classified.")
+        pattern = PHONE_VALUE if kind == "phone" else EMAIL_VALUE
+        values = dataframe[column].dropna().astype(str).str.strip()
+        for value in values:
+            if SSN_VALUE.search(value) or (PII_VALUE_PATTERN.search(value) and not pattern.fullmatch(value)):
+                raise ValueError("A declared contact column contains incompatible sensitive patterns.")
+    accepted, remaining = [], []
+    for issue in issues:
+        covered = (
+            issue.column in public and issue.code in {"PII_COLUMN_NAME", "PII_VALUE_PATTERN"}
+        ) or (issue.column in optional and issue.code == "MISSING_VALUES")
+        (accepted if covered else remaining).append(issue)
+    return remaining, accepted
 
 
 def _blocked_audit_report(
@@ -117,7 +189,7 @@ def _blocked_audit_report(
     )
 
 
-def audit_csv(file_path: str | Path) -> AuditReport:
+def audit_csv(file_path: str | Path, *, review_context: AuditReview | None = None) -> AuditReport:
     """Audit a CSV without modifying its contents."""
 
     path = Path(file_path)
@@ -249,12 +321,20 @@ def audit_csv(file_path: str | Path) -> AuditReport:
             )
 
         if not nonempty_values.empty:
-            pii_match_count = int(
-                nonempty_values.str.contains(
-                    PII_VALUE_PATTERN,
-                    na=False,
-                ).sum()
-            )
+            matches = nonempty_values.str.contains(PII_VALUE_PATTERN, na=False)
+            if _normalize_column_name(str(column_name)) in COORDINATE_LIMITS:
+                valid_coordinates = nonempty_values.map(
+                    lambda value, column=str(column_name): _valid_coordinate(value, column)
+                )
+                matches &= ~valid_coordinates
+                invalid_count = int((~valid_coordinates).sum())
+                if invalid_count:
+                    issues.append(AuditIssue(
+                        code="INVALID_COORDINATE", severity="WARNING", column=str(column_name),
+                        count=invalid_count,
+                        message="The coordinate column contains nonnumeric or out-of-range values. Latitude must be within -90 to 90; longitude within -180 to 180.",
+                    ))
+            pii_match_count = int(matches.sum())
 
             if pii_match_count:
                 issues.append(
@@ -312,6 +392,9 @@ def audit_csv(file_path: str | Path) -> AuditReport:
                     )
                 )
 
+    reviewed_findings: list[AuditIssue] = []
+    if review_context is not None:
+        issues, reviewed_findings = _apply_review(dataframe, issues, review_context)
     total_penalty = sum(PENALTIES[issue.severity] for issue in issues)
     quality_score = max(0, 100 - total_penalty)
     status: Literal["READY", "QUARANTINED"] = "READY" if not issues else "QUARANTINED"
@@ -326,4 +409,6 @@ def audit_csv(file_path: str | Path) -> AuditReport:
         quality_score=quality_score,
         preflight=preflight,
         issues=issues,
+        reviewed_findings=reviewed_findings,
+        review_context=review_context,
     )

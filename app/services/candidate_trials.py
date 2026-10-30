@@ -76,7 +76,8 @@ def run_candidate_trials(
     if source.is_symlink() or not source.is_file():
         raise CandidateTrialError("A regular, non-symlink source file is required.")
 
-    before = audit_csv(source)
+    review = dataset_policy.audit_review if dataset_policy is not None else None
+    before = audit_csv(source, review_context=review) if review else audit_csv(source)
     assessments = assess_candidate_policies(
         before, checked_batch, dataset_policy=dataset_policy
     )
@@ -138,7 +139,7 @@ def run_candidate_trials(
                     if output != trial_output or output.is_symlink() or not output.is_file():
                         raise CandidateTrialError("Executor returned an unexpected output.")
 
-                    after = audit_csv(output)
+                    after = audit_csv(output, review_context=review) if review else audit_csv(output)
                     output_hash = calculate_sha256(output)
 
                     if after.fingerprint_sha256 != output_hash:

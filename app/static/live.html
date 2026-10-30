@@ -125,6 +125,12 @@ td{padding:11px 7px;border-bottom:1px solid #303f3d;overflow-wrap:anywhere}
 .approve input[type=checkbox]{accent-color:var(--lime);margin-top:4px;transform:scale(1.1)}
 .approve .btn{margin-top:14px}
 .auditnote{margin-top:20px;font-size:12px;color:var(--muted)}
+.review-choice{display:flex;gap:12px;align-items:flex-start;margin:12px 0;font-size:13px}
+.review-choice input{accent-color:var(--lime);margin-top:5px}
+.review-fields{display:grid;gap:12px;margin:16px 0}
+.review-fields label{display:grid;gap:5px;font-size:13px}
+.review-fields input,.review-fields textarea{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;width:100%}
+.review-actions{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:16px}
 .hidden{display:none!important}
 footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
 @media(max-width:860px){.hero{grid-template-columns:1fr;padding-top:45px}.workbench{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
@@ -208,7 +214,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
     <div id="results" aria-live="polite">
       <div class="resulttop"><div><div class="kicker">02 / INDEPENDENT EVIDENCE</div><h2>Dataset analysis</h2></div><span id="mode-chip" class="mode">LIVE AUDIT</span></div>
       <div class="stats">
-        <article class="stat"><div class="name">Original quality</div><strong id="quality">—</strong><small>Deterministic score</small></article>
+        <article class="stat"><div class="name">Heuristic check score</div><strong id="quality">—</strong><small id="score-basis">Finding penalties; not a readiness percentage</small></article>
         <article class="stat"><div class="name">Readiness status</div><strong id="readiness">—</strong><small>Policy-aware result</small></article>
         <article class="stat"><div class="name">Analyzed rows</div><strong id="rows">—</strong><small>Input data records</small></article>
         <article class="stat highlight"><div class="name">AI candidates</div><strong id="count">—</strong><small>Actual model proposals</small></article>
@@ -231,6 +237,7 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
         </div>
         <p class="auditnote" id="score-guidance"></p>
         <p class="auditnote" id="auditnote"></p>
+        <p class="auditnote" id="analysis-layout"></p>
       </div>
       <div id="candidate-section" class="hidden">
         <div class="flexsection" style="margin-top:32px"><div><div class="kicker">03 / COMPETING REPAIRS</div><h2>Which strategy earns trust?</h2></div><p class="section-caption">Actual NVIDIA-generated strategies, fresh isolated trials, and measured evidence.</p></div>
@@ -242,6 +249,23 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
         <p id="decision-message">Awaiting evaluation.</p>
         <p id="remaining" style="margin-top:9px"></p>
       </div>
+      <section class="panel hidden" id="review-panel" style="margin-top:18px" aria-labelledby="review-heading">
+        <div class="kicker">HUMAN REVIEW / BEFORE AI PLANNING</div>
+        <h3 id="review-heading">Review findings and recheck</h3>
+        <p class="auditnote" id="review-summary" role="status"></p>
+        <p class="auditnote">Declare business context only after inspecting your file. Optional blanks remain blank. Public contacts remain in your file; raw rows are never sent to the model. These declarations are recorded in the evidence and do not certify correctness.</p>
+        <div id="review-choices"></div>
+        <div id="review-form">
+          <div class="review-fields">
+            <label>Reviewer reference<input id="reviewer-reference" maxlength="100" placeholder="For example: Dataset owner" autocomplete="off"></label>
+            <label>Reason for these decisions<textarea id="review-reason" rows="2" minlength="10" maxlength="500" placeholder="Explain why the selected contacts are public or the blank fields are optional."></textarea></label>
+          </div>
+          <label class="review-choice"><input type="checkbox" id="review-confirm"><span>I have inspected these columns and confirm the selected declarations. This recheck will not change any data values.</span></label>
+          <div class="review-actions"><button class="btn primary" id="review-apply" type="button">Apply review &amp; recheck</button><button class="ghost" id="review-reset" type="button">Reset declarations</button></div>
+        </div>
+        <div class="review-actions"><button class="btn secondary" id="review-continue" type="button">Continue to live NVIDIA analysis</button><button class="ghost" id="review-replace" type="button">Upload a corrected file</button></div>
+        <p class="auditnote">Other critical findings must be corrected in your source file and audited again. Review expires after 15 minutes and is reset when the file or selected table changes. A file with no remaining findings needs no AI repair.</p>
+      </section>
       <div class="approve hidden" id="approval-panel">
         <div class="kicker">04 / HUMAN AUTHORIZATION</div>
         <h3 style="margin:7px 0 10px">Approve a separate repaired CSV</h3>
@@ -257,7 +281,8 @@ footer{border-top:1px solid var(--line);padding:27px 0 45px;color:var(--muted);f
 <script>
 (function(){
 "use strict";
-var selected=null, latest=null, workbookLayout=null;
+var selected=null, latest=null, workbookLayout=null, reviewToken=null, reviewDirty=false, isBusy=false;
+var inputGeneration=0;
 var layoutConfirmed=false, layoutExplicit=false;
 var uploadInput=document.getElementById("file-input"), drop=document.getElementById("dropzone");
 var excelBox=document.getElementById("excel-layout");
@@ -270,7 +295,9 @@ function el(name,cls,text){var x=document.createElement(name);if(cls)x.className
 function text(id,value){document.getElementById(id).textContent=String(value);}
 function status(message,isError){feedback.className=isError?"error":"";feedback.textContent=message;}
 function invalidatePreviousResults(){
+  inputGeneration++;reviewToken=null;reviewDirty=false;
   latest=null;results.style.display="none";check.checked=false;downloadBtn.disabled=true;
+  setBusy(isBusy);
 }
 function selectedExcel(){
   return !!selected && selected.name.toLowerCase().endsWith(".xlsx");
@@ -392,6 +419,7 @@ async function inspectWorkbook(file){
   }
 }
 function setFile(file){
+  if(isBusy)return;
   selected=file||null;workbookLayout=null;layoutConfirmed=!file||!file.name.toLowerCase().endsWith(".xlsx");
   layoutExplicit=false;invalidatePreviousResults();
   auditBtn.disabled=!selected;analyzeBtn.disabled=!selected;
@@ -430,9 +458,17 @@ document.getElementById("sample-btn").addEventListener("click",function(){
   status("Sample loaded as a real file. Run either audit or live NVIDIA analysis.");
 });
 function setBusy(busy){
-  auditBtn.disabled=busy||!selected;analyzeBtn.disabled=busy||!selected;
+  isBusy=busy;
+  auditBtn.disabled=busy||!selected||reviewDirty;analyzeBtn.disabled=busy||!selected||reviewDirty;
   document.getElementById("sample-btn").disabled=busy;
-  downloadBtn.disabled=busy||!latest||!latest.approval_token||!check.checked;
+  uploadInput.disabled=busy;excelSheet.disabled=busy;excelHeader.disabled=busy;
+  downloadBtn.disabled=busy||reviewDirty||!latest||!latest.approval_token||!check.checked;
+  document.getElementById("review-apply").disabled=busy;
+  document.getElementById("review-reset").disabled=busy;
+  document.getElementById("review-replace").disabled=busy;
+  document.querySelectorAll("#recognized-tables button,#excel-preview button,#review-panel input,#review-panel textarea").forEach(function(x){x.disabled=busy;});
+  var report=latest&&latest.original_audit;
+  document.getElementById("review-continue").disabled=busy||reviewDirty||!report||report.status!=="QUARANTINED"||report.issues.some(function(i){return i.severity==="CRITICAL";});
 }
 async function send(url,form){
   var response=await fetch(url,{
@@ -482,7 +518,7 @@ function renderAudit(issues, score){
   }
   if(issues.some(function(x){return x.code==="PII_VALUE_PATTERN"||x.code==="PII_COLUMN_NAME";})){
     guidance.appendChild(el("p","warn-message",
-      "Potential contact or personal-data patterns were detected. DataReady has not sent these rows to NVIDIA. Check the columns before deciding whether the data is safe for AI planning; geographic coordinates may also cause false alarms."));
+      "Potential contact or personal-data patterns were detected. Raw rows are never sent to NVIDIA. Use the review panel for explicitly public business contact columns; other critical findings require correction and a fresh audit."));
   }
   text("score-guidance",score===0&&issues.length?
     "The audit score has reached its penalty floor. Repeated per-column warnings can reduce it to zero; this does NOT prove that all records are unusable. Confirm the table layout before interpreting the score.":"");
@@ -507,12 +543,48 @@ function candidateCard(item,win){
   if(after&&after.issues.length)card.appendChild(el("p","",after.issues.map(function(i){return i.code+" ("+i.count+")";}).join(" · ")+" remains or was detected."));
   return card;
 }
+function markReviewDirty(){
+  reviewDirty=true;reviewToken=null;
+  if(latest)latest.approval_token=null;
+  check.checked=false;document.getElementById("approval-panel").classList.add("hidden");
+  setBusy(false);text("review-summary","Review choices changed. Apply and recheck before continuing; previous repair approval is cleared.");
+}
+function renderReview(data){
+  var review=data.review||{}, options=review.options||{}, choices=document.getElementById("review-choices");
+  choices.replaceChildren();
+  var applied=review.decisions||{}, total=0;
+  ["public_contact_columns","optional_columns"].forEach(function(kind){
+    (options[kind]||[]).forEach(function(column){
+      total++;
+      var label=el("label","review-choice"), input=document.createElement("input");
+      input.type="checkbox";input.dataset.kind=kind;input.value=column;
+      input.checked=(applied[kind]||[]).indexOf(column)!==-1;
+      input.addEventListener("change",markReviewDirty);label.appendChild(input);
+      label.appendChild(el("span","",column+" — "+(kind==="public_contact_columns"?
+        "I confirm these are publicly listed business contacts, not private personal contacts.":
+        "This field is optional for my use; keep its blank values unchanged.")));
+      choices.appendChild(label);
+    });
+  });
+  var blocking=review.blocking_findings||[];
+  document.getElementById("review-panel").classList.toggle("hidden",!total&&!blocking.length&&review.status!=="APPLIED");
+  document.getElementById("review-form").classList.toggle("hidden",!total);
+  document.getElementById("reviewer-reference").value=applied.reviewer_reference||"";
+  document.getElementById("review-reason").value=applied.reason||"";
+  document.getElementById("review-confirm").checked=false;
+  text("review-summary",review.status==="APPLIED"?
+    "Review recorded: "+(review.accepted_findings||[]).length+" findings accepted under your declared context. No data values changed. "+blocking.length+" critical findings remain.":
+    "Review the findings below. "+blocking.length+" critical findings currently block AI planning. Unselected findings stay unresolved.");
+}
 function render(data){
-  latest=data;results.style.display="block";
+  latest=data;reviewToken=data.review_token||null;reviewDirty=false;results.style.display="block";
   var before=data.original_audit;
   text("quality",before.quality_score+"/100");text("readiness",before.status);
   text("rows",before.row_count);text("count",data.candidate_count||0);
   text("auditnote","SHA-256 of audited "+(selectedExcel()?"normalized Excel table":"dataset")+": "+before.fingerprint_sha256+" · No production changes.");
+  var layout=data.import_layout;
+  text("analysis-layout",layout?"Selected table: "+layout.sheet+" · header row "+layout.header_row+" · "+before.row_count+" rows · "+before.column_count+" columns.":"");
+  text("score-basis",data.review&&data.review.status==="APPLIED"?"Remaining finding penalties under your declared context; values unchanged":"Finding penalties; not a readiness percentage");
   renderAudit(before.issues,before.quality_score);
   var notes=data.import_warnings||[];
   var warningPanel=document.getElementById("import-warning-panel");
@@ -521,7 +593,7 @@ function render(data){
   notes.forEach(function(note){warningList.appendChild(el("li","",note));});
   warningPanel.classList.toggle("hidden",!notes.length);
   var live=data.model_invoked===true;
-  text("mode-chip",live?"LIVE NVIDIA NEMOTRON":"LIVE DETERMINISTIC AUDIT");
+  text("mode-chip",live?"LIVE NVIDIA NEMOTRON":data.mode==="HUMAN_REVIEW"?"HUMAN REVIEW · RECHECKED":"LIVE DETERMINISTIC AUDIT");
   var area=document.getElementById("candidate-section"),cards=document.getElementById("candidate-cards");cards.replaceChildren();
   var rec=data.recommendation||null;
   if(live&&data.candidates.length){
@@ -535,34 +607,65 @@ function render(data){
     "Remaining findings after the recommended trial: "+winner.audit_after.issues.map(function(i){return i.code+" ("+i.count+")";}).join(", ")+".":
     (winner?"No remaining audit findings in this isolated trial; business correctness is not guaranteed.":""));
   document.getElementById("approval-panel").classList.toggle("hidden",!data.approval_token);
+  renderReview(data);
   check.checked=false;downloadBtn.disabled=true;
   results.scrollIntoView({behavior:"smooth",block:"start"});
 }
 async function analyze(live){
   if(!selected)return;
+  if(reviewDirty){status("Apply your review choices or reset declarations before continuing.",true);return;}
+  var generation=inputGeneration;
   if(selected.size>MAX){status("This file is too large for the demo.",true);return;}
   var form=new FormData();form.append("file",selected,selected.name);
   if(!appendExcelOptions(form))return;
+  if(reviewToken)form.append("review_token",reviewToken);
   setBusy(true);
   status(live?"Running live NVIDIA Nemotron, then independently evaluating candidates…":"Inspecting your actual uploaded dataset…");
   try{
     var response=await send(live?"/api/analyze":"/api/audit",form);
     var data=await response.json();
+    if(generation!==inputGeneration)return;
     render(data);
     status(live?(data.model_invoked?"Live NVIDIA analysis completed.":"Safe audit completed; no AI call was needed or permitted."):"Fresh audit completed.");
   }catch(error){status(error.message,true);}
   finally{setBusy(false);}
 }
+document.getElementById("review-apply").addEventListener("click",async function(){
+  if(!selected||!latest||isBusy)return;
+  var choices={public_contact_columns:[],optional_columns:[]};
+  document.querySelectorAll("#review-choices input:checked").forEach(function(x){choices[x.dataset.kind].push(x.value);});
+  var reviewer=document.getElementById("reviewer-reference").value.trim(), reason=document.getElementById("review-reason").value.trim();
+  if(!choices.public_contact_columns.length&&!choices.optional_columns.length){text("review-summary","Select at least one supported review decision, or upload a corrected file.");return;}
+  if(!reviewer||reason.length<10||!document.getElementById("review-confirm").checked){text("review-summary","Enter a reviewer reference, a reason of at least 10 characters, and confirm your declarations.");return;}
+  var generation=inputGeneration, form=new FormData();form.append("file",selected,selected.name);
+  if(!appendExcelOptions(form))return;
+  form.append("choices",JSON.stringify(choices));form.append("reviewer_reference",reviewer);
+  form.append("review_reason",reason);form.append("consent","confirm-review");
+  form.append("source_fingerprint",latest.original_audit.fingerprint_sha256);
+  setBusy(true);text("review-summary","Rechecking unchanged file contents against your review decisions…");
+  try{
+    var response=await send("/api/review",form), data=await response.json();
+    if(generation!==inputGeneration)return;
+    render(data);status("Human review recorded and file rechecked. No data values changed.");
+    document.getElementById("review-panel").scrollIntoView({behavior:"smooth",block:"center"});
+  }catch(error){text("review-summary",error.message);}
+  finally{setBusy(false);}
+});
+["reviewer-reference","review-reason"].forEach(function(id){document.getElementById(id).addEventListener("input",markReviewDirty);});
+document.getElementById("review-continue").addEventListener("click",function(){analyze(true);});
+document.getElementById("review-reset").addEventListener("click",function(){reviewToken=null;reviewDirty=false;analyze(false);});
+document.getElementById("review-replace").addEventListener("click",function(){uploadInput.value="";uploadInput.click();});
 auditBtn.addEventListener("click",function(){analyze(false);});
 analyzeBtn.addEventListener("click",function(){analyze(true);});
 check.addEventListener("change",function(){downloadBtn.disabled=!check.checked||!latest||!latest.approval_token;});
 downloadBtn.addEventListener("click",async function(){
-  if(!latest||!latest.approval_token||!check.checked||!selected)return;
+  if(reviewDirty||!latest||!latest.approval_token||!check.checked||!selected)return;
   setBusy(true);status("Rechecking source, policy, and trial evidence before creating your repaired copy…");
   try{
     var form=new FormData();form.append("file",selected,selected.name);
     if(!appendExcelOptions(form))return;
     form.append("approval_token",latest.approval_token);form.append("consent","approve");
+    if(reviewToken)form.append("review_token",reviewToken);
     var response=await send("/api/export",form);
     var blob=await response.blob(),url=URL.createObjectURL(blob);
     var link=document.createElement("a");link.href=url;link.download="dataready-repaired.csv";
@@ -573,7 +676,7 @@ downloadBtn.addEventListener("click",async function(){
 });
 document.getElementById("json-btn").addEventListener("click",function(){
   if(!latest)return;
-  var safe=JSON.parse(JSON.stringify(latest));delete safe.approval_token;
+  var safe=JSON.parse(JSON.stringify(latest));delete safe.approval_token;delete safe.review_token;
   var blob=new Blob([JSON.stringify(safe,null,2)],{type:"application/json"});
   var url=URL.createObjectURL(blob),a=document.createElement("a");
   a.href=url;a.download="dataready-evidence.json";document.body.appendChild(a);a.click();a.remove();

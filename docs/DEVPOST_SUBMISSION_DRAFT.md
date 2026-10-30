@@ -1,7 +1,8 @@
 # DataReady — submission draft
 
-Status: prepared October 29, 2026. Public deployment, video upload, and the final
-Devpost submission are not yet verified. Replace pending links before submitting.
+Status: updated October 29, 2026. Public deployment and the hosted sample API
+workflow passed. The final browser walkthrough, video upload, and Devpost
+submission remain pending. Replace the pending video link before submitting.
 
 ## Submission fields
 
@@ -9,7 +10,7 @@ Devpost submission are not yet verified. Replace pending links before submitting
 - **Tagline:** AI proposes data repairs. Independent checks verify them. You approve the export.
 - **Track:** Best Apps and Agents
 - **Source:** https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates
-- **Working application:** PENDING — use the verified `dataready-live` URL.
+- **Working application:** https://dataready-live-350298872740.us-west1.run.app
 - **Public YouTube video:** PENDING — keep the recording under three minutes.
 - **License:** Apache-2.0, in the repository's LICENSE file.
 
@@ -48,21 +49,28 @@ The core supports exact-duplicate removal, outer-whitespace trimming, and
 missing-marker normalization under policy controls. SHA-256 fingerprints bind
 the plan, source, trial, and exported result. The Cloud Run deployment script
 configures server-side Secret Manager credentials and Firestore transactions
-for public inference quotas. Hosted operation remains to be verified before
-this draft can describe it as deployed. The earlier Gemini / Google ADK path
-remains a separate provider option.
+for public inference quotas. The public Cloud Run deployment passed a real
+sample upload, NVIDIA call, independent trial, and approved export through its
+HTTP API. The earlier Gemini / Google ADK path remains a separate provider option.
 
 ## Verified results
 
 - The complete current automated suite passed: **355 tests**.
 - A real local customer-UI run called NVIDIA Nemotron through Nebius Token Factory.
 - The sample contained four rows, one exact duplicate, and one missing category.
-- The actual run returned one candidate: remove the exact duplicate.
+- The local run returned one candidate: remove the exact duplicate.
 - Its independent trial produced three rows and zero duplicates, with no
   detected audit regressions. The heuristic score rose from 80 to 90.
 - The category remained blank; the application did not invent its value.
 - After explicit approval, the downloaded CSV exactly matched the trial's
   SHA-256 fingerprint. The evidence reported the original preserved.
+- The deployed application also passed the sample workflow through its HTTP
+  API with a signed guest session. Its one candidate combined missing-marker
+  normalization and duplicate removal, producing the same three-row CSV.
+  Export without approval returned HTTP 403; approved export matched the
+  trial fingerprint. The final hosted browser walkthrough remains pending.
+
+Sanitized hosted evidence: [October 29 sample run](evidence/2026-10-29-hosted-sample.json).
 
 These observations establish the sample workflow, not general data correctness
 or production readiness. The live model is not required to return a fixed number
@@ -121,11 +129,12 @@ and NVIDIA model behavior exercised here.
 
 Record actual behavior. If only one candidate is returned, describe one.
 Do not present the fixed replay service as live inference or suggest the hotel
-workbook was repaired. Use the verified public app once it is available.
+workbook was repaired. Use the public app linked above for the recording.
 
 ## Final completion checklist
 
-- [ ] Deploy and test the public live app; replace the pending URL above.
+- [x] Deploy the public live app and verify the sample API workflow; add its URL.
+- [ ] Complete the hosted browser walkthrough, including approval and download.
 - [ ] Verify the submitted source link and setup instructions in a fresh browser.
 - [ ] Check judge testing access, provider credits, and quota availability.
 - [ ] Record, upload publicly to YouTube, and replace the pending video link.

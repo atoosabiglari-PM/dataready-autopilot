@@ -45,7 +45,17 @@ category stayed blank. The downloaded CSV's SHA-256 matched the trial output:
 `1ae42f08eeac9adb8ef3d3bf0fa64857eb8be4bf39c11016b544c6f5e772d2cc`.
 This verifies that sample workflow; it does not establish general data correctness.
 
-**Public live deployment and hosted end-to-end verification remain pending.**
+**Public live app:** https://dataready-live-350298872740.us-west1.run.app
+
+**Hosted API verification passed on October 29, 2026:** public homepage and
+health check, signed guest session, sample upload, real NVIDIA analysis,
+independent trial, and approved CSV export. Export without approval returned
+HTTP 403. The downloaded CSV matched the trial fingerprint above: three rows,
+zero duplicates, and one category still blank. The hosted model returned one
+candidate combining missing-marker normalization and exact-duplicate removal.
+[Sanitized hosted evidence](docs/evidence/2026-10-29-hosted-sample.json) records
+this run. The final hosted browser walkthrough and demo recording remain pending.
+
 The competition implementation is on
 [`feature/competing-repair-candidates`](https://github.com/atoosabiglari-PM/dataready-autopilot/tree/feature/competing-repair-candidates).
 

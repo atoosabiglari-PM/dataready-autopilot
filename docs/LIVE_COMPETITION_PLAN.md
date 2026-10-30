@@ -3,7 +3,12 @@
 **Status (October 29, 2026, Pacific):** The competition feature branch has
 355 passing tests. A real local NVIDIA / Nebius customer-upload run, approved
 export, and downloaded CSV fingerprint were verified. Public deployment and
-hosted end-to-end verification remain pending.
+the hosted sample API workflow also passed, including signed guest access,
+live NVIDIA inference, approval enforcement, and matching export fingerprint.
+The final hosted browser walkthrough and demo recording remain pending.
+
+**Public live app:** https://dataready-live-350298872740.us-west1.run.app  
+**Hosted evidence:** [October 29 sample run](evidence/2026-10-29-hosted-sample.json)
 
 **Official rules:** https://nebiusglobalaihackathon.devpost.com/rules  
 **FAQ:** https://nebiusglobalaihackathon.devpost.com/details/faqs  
@@ -126,6 +131,7 @@ gcloud run deploy dataready-live \
   --project=dataready-autopilot-atoosa \
   --source . \
   --region=us-west1 \
+  --base-image=python312 --no-automatic-updates \
   --allow-unauthenticated \
   --min-instances=0 \
   --max-instances=1 \
@@ -237,9 +243,13 @@ into the video as if it were fresh inference.
       in the new customer UI. Sample result: 4 to 3 rows, 1 to 0 duplicates,
       score 80 to 90, one missing category preserved. Downloaded output SHA-256
       exactly matched the independent trial's fingerprint.
-- [ ] Securely configure Cloud Run runtime secrets, Firestore atomic quota
-      transactions, anonymous guest sessions, and spending controls.
-- [ ] Deploy and verify separate **dataready-live** URL using real uploads.
+- [x] Configure Cloud Run runtime secrets, Firestore quota transactions, and
+      signed anonymous guest sessions; exercise the deployed inference path.
+- [ ] Verify provider-side spending controls and credits for judge access.
+- [x] Deploy the separate **dataready-live** service and verify a real synthetic
+      sample upload, NVIDIA call, independent trial, approval enforcement, and
+      matching CSV export through its HTTP API.
+- [ ] Complete the final hosted browser walkthrough, including CSV download.
 - [x] Update the competition branch README to prominently describe the live
       customer product, setup, observed verification, and known limitations.
 - [ ] Check the submitted repository link opens the competition implementation

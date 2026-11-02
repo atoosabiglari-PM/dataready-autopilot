@@ -1,4 +1,5 @@
 [project]
+license = { file = "LICENSE" }
 name = "dataready-autopilot"
 version = "0.1.0"
 description = "An autonomous, evidence-backed trust gate for AI data pipelines."

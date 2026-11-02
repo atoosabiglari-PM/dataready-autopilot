@@ -207,8 +207,9 @@ no login or judge credentials; supply the direct upload-and-analysis URL.
    instead of unverified model-written data changes.
 
 **Submission:** Devpost project description, **working live-app URL**,
-public GitHub repository, clear README and Apache-2.0 LICENSE (already
-present; verify visible on GitHub), <3-minute public **YouTube demo video**
+public GitHub repository, clear README and visible licensing. Current source
+uses PolyForm Noncommercial 1.0.0 with additional judging permission; earlier
+Apache-2.0 releases retain their grants (see `../LICENSE_HISTORY.md`). Include a <3-minute public **YouTube demo video**
 showing the project working on device, used tools, track selection, and
 specific **feedback** on Nebius/NVIDIA tooling and models.
 

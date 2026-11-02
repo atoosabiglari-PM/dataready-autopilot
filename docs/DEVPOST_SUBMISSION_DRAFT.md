@@ -17,7 +17,7 @@ updated browser UI remains pending.
 - **Source:** https://github.com/atoosabiglari-PM/dataready-autopilot
 - **Working application:** https://dataready-live-350298872740.us-west1.run.app
 - **Public YouTube video:** PENDING — keep the recording under three minutes.
-- **License:** Apache-2.0, in the repository's LICENSE file.
+- **Current source license:** PolyForm Noncommercial 1.0.0 with additional judging permission; see `../LICENSE`, `../JUDGING_PERMISSION.md`, and `../LICENSE_HISTORY.md`. Earlier Apache-2.0 submissions/releases retain their original permissions.
 
 ## Inspiration
 
